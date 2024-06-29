@@ -223,7 +223,23 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      
+
+  # tcsaver - SSL cert exporter
+  tcsaver:
+    image: jcrummy/tcsaver:latest
+    container_name: tcsaver
+    networks:
+      brunswick:
+    environment:
+      - TCSAVER_WATCH=true
+      - TCSAVER_CERT_EXTENSION=.crt
+      - TCSAVER_KEY_EXTENSION=.key
+    volumes:
+      - ${APPDIR}/tcsaver/config.yaml:/config.yaml
+      - ${DOCKERDIR}/certs/acme.json:/acme.json
+      - ${DOCKERDIR}/certs/exports/certs:/certs
+      - ${DOCKERDIR}/certs/exports/private:/private
+
   ############################# INDEXERS
   # Prowlarr - Hydra and Jackett combined
   prowlarr:
