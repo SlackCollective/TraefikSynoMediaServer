@@ -1,0 +1,988 @@
+########################### NETWORKS
+networks:
+  brunswick:
+    name: brunswick
+    external: true
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 172.18.5.0/24
+          
+########################### SECRETS
+secrets:
+  cf_dns_api_token:
+    file: $DOCKERDIR/secrets/cf_dns_api_token
+  traefik_forward_auth:
+    file: $DOCKERDIR/secrets/traefik_forward_auth
+  # plex_claim:
+    # file: $DOCKERDIR/secrets/plex_claim
+
+services:
+########################### REVERSE PROXY / NETWORKING / SECURITY
+  # Traefik 3 - Reverse Proxy
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      brunswick:
+    ports:
+      - 89:80
+      - 449:443
+      - 8089:8080 #Web UI (enabled by --api.insecure=true)
+    command: # CLI arguments
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # - --entrypoints.traefik.address=:8080
+      # - --entrypoints.ping.address=:8081
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --api=true
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --ping=true
+      - --serversTransport.insecureSkipVerify=true
+      # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
+      - --log=true
+      # - --log.filePath=/logs/traefik.log
+      - --log.level=INFO # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --accessLog=true
+      - --accessLog.filePath=/logs/access.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --providers.docker=true
+      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=brunswick 
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.options=tls-opts@file
+      # Add dns-cloudflare as default certresolver for all services. Also enables TLS and no need to specify on individual services
+      - --entrypoints.websecure.http.tls.certresolver=dns-cloudflare
+      - --entrypoints.websecure.http.tls.domains[0].main=$DOMAINNAME
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.$DOMAINNAME
+      - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
+      - --providers.file.watch=true # Only works on top level files in the rules folder
+      # - --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+      - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 5s
+      retries: 3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $DOCKERDIR/certs/acme.json:/acme.json
+      - $APPDIR/traefik/rules:/rules
+    environment:
+      - TZ=$TZ
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token    
+      - DOMAINNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
+      - DOMAINNAME_TS # Additional Domain variable passthrough to container
+    secrets:
+      - cf_dns_api_token
+      # - basic_auth_credentials
+    labels:
+      - traefik.enable=true
+      ## Log viewer
+      # - dozzle
+      # HTTP Routers
+      - traefik.http.routers.traefik-rtr.entrypoints=websecure
+      - traefik.http.routers.traefik-rtr.rule=Host(`traefik.$DOMAINNAME`)
+      # Services - API
+      - traefik.http.routers.traefik-rtr.service=api@internal
+      # Healthcheck/ping
+      - traefik.http.routers.ping.rule=Host(`traefik.$DOMAINNAME`) && Path(`/ping`)
+      - traefik.http.routers.ping.service=ping@internal
+      # Middlewares
+      # - "traefik.http.routers.traefik-rtr.middlewares=chain-no-auth@file" # For No Authentication
+      #- "traefik.http.routers.traefik-rtr.middlewares=chain-basic-auth@file" # For Basic HTTP Authentication
+      - traefik.http.routers.traefik-rtr.middlewares=chain-oauth@file # For Google OAuth
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
+  # Google OAuth - Single Sign On using OAuth 2.0
+  oauth:
+    image: thomseddon/traefik-forward-auth:latest
+    container_name: oauth
+    restart: unless-stopped
+    networks:
+      brunswick:
+    security_opt:
+      - no-new-privileges:true
+    secrets:
+      - source: traefik_forward_auth
+        target: /config
+    environment:
+      - CONFIG=/config
+      - COOKIE_DOMAIN=$DOMAINNAME,*.$DOMAINNAME
+      - INSECURE_COOKIE=true
+      - AUTH_HOST=oauth.$DOMAINNAME
+      - URL_PATH=/_oauth
+      - LOG_LEVEL=warn # set to trace while testing bypass rules
+      - LOG_FORMAT=text
+      - LIFETIME=86400 # 1 day
+      - DEFAULT_ACTION=auth
+      - DEFAULT_PROVIDER=google
+    labels:
+      - traefik.enable=true
+      # HTTP Routers
+      - traefik.http.routers.oauth-rtr.entrypoints=websecure
+      - traefik.http.routers.oauth-rtr.rule=Host(`oauth.$DOMAINNAME`)
+      # HTTP Services
+      - traefik.http.routers.oauth-rtr.service=oauth-svc
+      - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
+
+  # Cloudflare DDNS - Dynamic DNS Updater
+  cf-ddns:
+    image: oznu/cloudflare-ddns
+    container_name: cloudflare-ddns
+    restart: unless-stopped
+    networks:
+      brunswick:
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - API_KEY=${CF_API_KEY}
+      - ZONE=${DOMAINNAME}
+      - PROXIED=false
+      - RRTYPE=A
+      - DELETE_ON_STOP=false
+      - DNS_SERVER=1.1.1.1
+      - CRON="@daily"
+    labels:
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  # Gluetun - provider-agnostic VPN client
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 9997:8080 # qBittorrent WebUI
+      - 3996:3996 # qBittorrent seeding port
+      - 3996:3996/udp # qBittorrent seeding port
+    security_opt:
+      - no-new-privileges:true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_INTERFACE=tun0
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.1.0/24 #needed for *Arr connections
+      - FIREWALL_VPN_INPUT_PORTS=3996 #uncomment/edit if your provider offers port fwd
+      - HTTPPROXY=off #change to on if you wish to enable
+      - SHADOWSOCKS=off #change to on if you wish to enable
+    volumes:
+      - ${APPDIR}/gluetun:/gluetun
+    labels:
+      - traefik.enable=true
+      ## Log viewer
+      - dozzle
+      # HTTP Routers
+      - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
+      - traefik.http.routers.gluetun-qbittorrent-rtr.rule=Host(`qbittorrent.$DOMAINNAME`) # qBittorrent
+      # Middlewares
+      - traefik.http.routers.gluetun-qbittorrent-rtr.middlewares=chain-oauth@file # qBittorrent
+      # HTTP Services
+      - traefik.http.routers.gluetun-qbittorrent-rtr.service=gluetun-svc # qBittorrent
+      - traefik.http.services.gluetun-svc.loadbalancer.server.port=8080 # qBittorrent
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      
+  ############################# INDEXERS
+  # Prowlarr - Hydra and Jackett combined
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    networks:
+      brunswick:
+    ports:
+      - 9696:9696
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      # - ARGS=
+    volumes:
+      - ${APPDIR}/prowlarr:/config:rw
+      - ${DATADIR}/torrents:/data/torrents:rw
+      - ${DATADIR}/usenet:/data/usenet:rw
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.prowlarr-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.prowlarr-rtr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
+      - traefik.http.routers.prowlarr-rtr-bypass.priority=100
+      # HTTP Routers Auth
+      - traefik.http.routers.prowlarr-rtr.entrypoints=websecure
+      - traefik.http.routers.prowlarr-rtr.rule=Host(`prowlarr.$DOMAINNAME`)
+      - traefik.http.routers.prowlarr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.prowlarr-rtr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.prowlarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.prowlarr-rtr.service=prowlarr-svc
+      - traefik.http.routers.prowlarr-rtr-bypass.service=prowlarr-svc
+      - traefik.http.services.prowlarr-svc.loadbalancer.server.port=9696
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  ############################# DOWNLOADERS
+  # SABnzbd - nzb downloader
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    networks:
+      brunswick:
+    ports:
+      - 9998:8080
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - HAS_IPV6=false
+    volumes:
+      - ${APPDIR}/sabnzbd:/config
+      - ${DATADIR}/usenet:/data/usenet:rw
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.sabnzbd-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.sabnzbd-rtr-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
+      - traefik.http.routers.sabnzbd-rtr-bypass.priority=100
+      # HTTP Routers Auth
+      - traefik.http.routers.sabnzbd-rtr.entrypoints=websecure
+      - traefik.http.routers.sabnzbd-rtr.rule=Host(`sabnzbd.$DOMAINNAME`)
+      - traefik.http.routers.sabnzbd-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.sabnzbd-rtr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.sabnzbd-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.sabnzbd-rtr.service=sabnzbd-svc
+      - traefik.http.routers.sabnzbd-rtr-bypass.service=sabnzbd-svc
+      - traefik.http.services.sabnzbd-svc.loadbalancer.server.port=8080
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
+  # qbittorrent - torrent downloader with VPN
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: always 
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s 
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      # - WEBUI_PORT=9997
+    volumes:
+      - ${APPDIR}/qbittorrent:/config:rw
+      - ${DATADIR}/torrents:/data/torrents:rw
+      - ${APPDIR}/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
+    labels:
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  # qbit_manage - torrent client management
+  qbit_manage:
+    image: bobokun/qbit_manage
+    container_name: qbitmanage
+    restart: unless-stopped
+    networks:
+      brunswick:
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDIR}/qbitmanage:/config:rw
+      - ${APPDIR}/qbittorrent/:/qbittorrent/:ro
+      - ${DATADIR}/torrents:/data/torrents:rw # same as qbittorrent download dir
+    labels:
+      # - traefik.enable=true
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+        
+  # autobrr - torrent RSS downloader
+  autobrr:
+    image: ghcr.io/autobrr/autobrr:latest
+    container_name: autobrr
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 7474:7474
+    user: 1031:65539
+    environment:
+      - TZ=${TZ}
+      - AUTOBRR_PORT=7474
+      - AUTOBRR_HOST=0.0.0.0
+    volumes:
+      - ${APPDIR}/autobrr:/config
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.autobrr-rtr.entrypoints=websecure
+      - traefik.http.routers.autobrr-rtr.rule=Host(`autobrr.$DOMAINNAME`)
+      - traefik.http.routers.autobrr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.autobrr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.autobrr-rtr.service=autobrr-svc
+      - traefik.http.services.autobrr-svc.loadbalancer.server.port=7474
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  # omegabrr - auto-generate filters for autobrr based on *arr subscriptions
+  omegabrr:
+    image: ghcr.io/autobrr/omegabrr:latest
+    container_name: omegabrr
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 7441:7441
+    user: ${PUID}:${PGID}
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ${APPDIR}/omegabrr:/config
+    labels:
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      
+  ############################# MEDIA SEARCH/INDEX
+  # Radarr - Movies
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 7878:7878
+    depends_on:
+      sabnzbd:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+      prowlarr:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s   
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDIR}/radarr:/config
+      - ${DATADIR}:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.radarr-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.radarr-rtr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
+      - traefik.http.routers.radarr-rtr-bypass.priority=100
+      # HTTP Routers Auth
+      - traefik.http.routers.radarr-rtr.entrypoints=websecure
+      - traefik.http.routers.radarr-rtr.rule=Host(`radarr.$DOMAINNAME`)
+      - traefik.http.routers.radarr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.radarr-rtr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.radarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.radarr-rtr.service=radarr-svc
+      - traefik.http.routers.radarr-rtr-bypass.service=radarr-svc
+      - traefik.http.services.radarr-svc.loadbalancer.server.port=7878
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  # Sonarr - TV
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    networks:
+      brunswick:
+    ports:
+      - 8989:8989
+    depends_on:
+      sabnzbd:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+      prowlarr:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDIR}/sonarr:/config
+      - ${DATADIR}:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.sonarr-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.sonarr-rtr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
+      - traefik.http.routers.sonarr-rtr-bypass.priority=100
+      # HTTP Routers Auth
+      - traefik.http.routers.sonarr-rtr.entrypoints=websecure
+      - traefik.http.routers.sonarr-rtr.rule=Host(`sonarr.$DOMAINNAME`)
+      - traefik.http.routers.sonarr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.sonarr-rtr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.sonarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.sonarr-rtr.service=sonarr-svc
+      - traefik.http.routers.sonarr-rtr-bypass.service=sonarr-svc
+      - traefik.http.services.sonarr-svc.loadbalancer.server.port=8989
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  # Tdarr - Video conversion
+  tdarr:
+    image: haveagitgat/tdarr:latest
+    container_name: tdarr
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 8265:8265
+      - 8266:8266
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - nodeID=TdarrNode
+      - THREADS_WORKER_INIT_TIMEOUT=200000
+    volumes:
+      - ${APPDIR}:/app/server
+      - ${APPDIR}/Tdarr/Configs:/app/configs
+      - ${APPDIR}/Tdarr/Logs:/app/logs
+      - ${DATADIR}/media/Transcode:/temp
+      - ${DATADIR}:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.tdarr-rtr.entrypoints=websecure
+      - traefik.http.routers.tdarr-rtr.rule=Host(`tdarr.$DOMAINNAME`)
+      - traefik.http.routers.tdarr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.tdarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.tdarr-rtr.service=tdarr-svc
+      - traefik.http.services.tdarr-svc.loadbalancer.server.port=8265
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  ############################# HOME THEATRE
+  # Plex - Media Player
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 32400:32400
+    # network_mode: "host"
+    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VERSION=docker
+    volumes:
+      - ${APPDIR}/plex:/config:rw
+      - ${DATADIR}/media:/data/media:rw
+      - ${DATADIR}/media:/transcode
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.plex-rtr.entrypoints=websecure
+      - traefik.http.routers.plex-rtr.rule=Host(`plex.$DOMAINNAME`)
+      - traefik.http.routers.plex-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.plex-rtr.middlewares=chain-no-auth@file
+      # HTTP Services
+      - traefik.http.routers.plex-rtr.service=plex-svc
+      - traefik.http.services.plex-svc.loadbalancer.server.port=32400
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
+  ############################# PLEX MONITORING/MANAGEMENT
+  # Tautulli - Media play and user monitoring
+  tautulli:
+    image: lscr.io/linuxserver/tautulli:latest
+    container_name: tautulli
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 8182:8181
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      # - ARGS=
+      - DEBUG=no
+    volumes:
+      - ${APPDIR}/tautulli:/config:rw
+      - ${APPDIR}/plex:/plex:ro
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.tautulli-rtr.entrypoints=websecure
+      - traefik.http.routers.tautulli-rtr.rule=Host(`$DOMAINNAME`)
+      - traefik.http.routers.tautulli-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.tautulli-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.tautulli-rtr.service=tautulli-svc
+      - traefik.http.services.tautulli-svc.loadbalancer.server.port=8181
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  # Overseer - Allows Plex users to request media
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 5055:5055
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${APPDIR}/overseerr:/config
+      - ${DATADIR}/media:/data/media
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.overseerr-rtr.entrypoints=websecure
+      - traefik.http.routers.overseerr-rtr.rule=Host(`overseerr.$DOMAINNAME`)
+      - traefik.http.routers.overseerr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.overseerr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.overseerr-rtr.service=overseerr-svc
+      - traefik.http.services.overseerr-svc.loadbalancer.server.port=5055
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
+  ############################# INTERNET VIDEO DOWNLOADER
+  # Metube – Self-hosted YT downloader with GUI
+  metube:
+    image: ghcr.io/alexta69/metube
+    container_name: metube
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 8084:8081
+    environment:
+      - UID=${PUID}
+      - GID=${PGID}
+      - TZ=${TZ}
+      - DELETE_FILE_ON_TRASHCAN=true
+      - OUTPUT_TEMPLATE=%(playlist_title&Playlist |)S%(playlist_title|)S%(playlist_uploader& by |)S%(playlist_uploader|)S%(playlist_autonumber& - |)S%(playlist_autonumber|)S%(playlist_count& of |)S%(playlist_count|)S%(playlist_autonumber& - |)S%(uploader,creator|UNKNOWN_AUTHOR)S - %(title|UNKNOWN_TITLE)S - %(release_date>%Y-%m-%d,upload_date>%Y-%m-%d|UNKNOWN_DATE)S.%(ext)s
+    volumes:
+      - ${DATADIR}/media/youtube:/downloads
+      - ${DATADIR}/media/youtube/cookies:/cookies
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.metube-rtr.entrypoints=websecure
+      - traefik.http.routers.metube-rtr.rule=Host(`metube.$DOMAINNAME`)
+      - traefik.http.routers.metube-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.metube-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.metube-rtr.service=metube-svc
+      - traefik.http.services.metube-svc.loadbalancer.server.port=8081
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      
+  ############################# BOOK LIBRARY MANAGEMENT
+  # Calibre – Content server
+  calibre:
+    image: lscr.io/linuxserver/calibre:latest
+    container_name: calibre
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+    networks:
+      brunswick:
+    ports:
+      - 8082:8080 #Calibre desktop gui
+      - 8181:8181 #Calibre desktop gui HTTPS
+      - 8085:8081 #Calibre content server gui
+    # devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+      # - /dev/dri:/dev/dri
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - TITLE=BrunswickBooks
+      - CALIBRE_CACHE_DIRECTORY=/cache
+      - CLI_ARGS="--trusted-ips 192.168.1.0/24,172.18.5.0/24"
+      # - DRINODE=/dev/dri/renderD128
+    volumes:
+      - ${APPDIR}/calibre:/config
+      - ${APPDIR}/calibre/cache:/cache
+      - ${DATADIR}:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.calibre-rtr.entrypoints=websecure
+      - traefik.http.routers.calibre-rtr.rule=Host(`calibre.$DOMAINNAME`)
+      - traefik.http.routers.calibre-rtr.priority=99
+      - traefik.http.routers.calibre-server-rtr.entrypoints=websecure
+      - traefik.http.routers.calibre-server-rtr.rule=Host(`books.$DOMAINNAME`)
+      - traefik.http.routers.calibre-server-rtr.priority=100
+      # Middlewares
+      - traefik.http.routers.calibre-rtr.middlewares=chain-oauth@file
+      - traefik.http.routers.calibre-server-rtr.middlewares=chain-no-auth@file
+      # HTTP Services
+      - traefik.http.routers.calibre-rtr.service=calibre-svc
+      - traefik.http.services.calibre-svc.loadbalancer.server.port=8080
+      - traefik.http.routers.calibre-server-rtr.service=calibre-server-svc
+      - traefik.http.services.calibre-server-svc.loadbalancer.server.port=8081
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+            
+  ############################# SYSTEM MANAGEMENT/MONITORING
+  # deunhealth - Restart unhealthy containers, e.g. containers depending on VPN
+  deunhealth:
+    image: qmcgaw/deunhealth
+    container_name: deunhealth
+    restart: unless-stopped
+    network_mode: "none"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+  # Dozzle - Real-time Docker Log Viewer
+  dozzle:
+    image: amir20/dozzle
+    container_name: dozzle
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 9999:8080
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DOZZLE_BASE=/
+      - DOZZLE_LEVEL=error
+      - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
+      - DOZZLE_TAILSIZE=300
+      - DOZZLE_ENABLE_ACTIONS=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.dozzle-rtr.entrypoints=websecure
+      - traefik.http.routers.dozzle-rtr.rule=Host(`dozzle.$DOMAINNAME`)
+      - traefik.http.routers.dozzle-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.dozzle-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.dozzle-rtr.service=dozzle-svc
+      - traefik.http.services.dozzle-svc.loadbalancer.server.port=8080
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      
+  # Notifiarr - update ARR profiles
+  notifiarr:
+    image: golift/notifiarr:latest
+    container_name: notifiarr
+    hostname: notifiarr #must be set for this container, can by anything
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 5454:5454
+    environment:
+      - TZ=${TZ}
+      - DN_API_KEY=${NOTIFIARR}
+      - USER=docker
+    volumes:
+      - ${APPDIR}/notifiarr:/config
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.notifiarr-rtr.entrypoints=websecure
+      - traefik.http.routers.notifiarr-rtr.rule=Host(`notifiarr.$DOMAINNAME`)
+      - traefik.http.routers.notifiarr-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.notifiarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.notifiarr-rtr.service=notifiarr-svc
+      - traefik.http.services.notifiarr-svc.loadbalancer.server.port=5454
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  ############################# SECURITY/PASSWORD MANAGEMENT
+  # Vaultwarden - Locally-hosted Bitwarden
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      brunswick:
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DOMAIN=https://vaultwarden.${DOMAINNAME}
+      - PUSH_ENABLED=true
+      - PUSH_INSTALLATION_ID=${PUSH_INSTALLATION_ID}
+      - PUSH_INSTALLATION_KEY=${PUSH_INSTALLATION_KEY}
+      - LOG_LEVEL=error
+      - EXTENDED_LOGGING=false
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_FROM=vaultwarden@${DOMAINNAME}
+      - SMTP_PORT=587
+      - SMTP_SECURITY=starttls
+      - SMTP_USERNAME=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASS}
+    volumes:
+      - ${APPDIR}/vaultwarden:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.vaultwarden-rtr.entrypoints=websecure
+      - traefik.http.routers.vaultwarden-rtr.rule=Host(`vaultwarden.$DOMAINNAME`)
+      - traefik.http.routers.vaultwarden-rtr.priority=99
+      # Middlewares
+      - traefik.http.routers.vaultwarden-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.vaultwarden-rtr.service=vaultwarden-svc
+      - traefik.http.services.vaultwarden-svc.loadbalancer.server.port=80
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
