@@ -35,13 +35,14 @@ services:
       - 89:80
       - 449:443
       - 8089:8080 #Web UI (enabled by --api.insecure=true)
+      - 8086:8081 #ping
     command: # CLI arguments
       - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      # - --entrypoints.traefik.address=:8080
-      # - --entrypoints.ping.address=:8081
+      - --entrypoints.traefik.address=:8080
+      - --entrypoints.ping.address=:8081
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
@@ -51,7 +52,7 @@ services:
       - --ping=true
       - --serversTransport.insecureSkipVerify=true
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
-      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
+      # - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
       - --log=true
       - --log.filePath=/logs/traefik.log
       - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
@@ -241,6 +242,38 @@ services:
       - ${DOCKERDIR}/certs/exports/certs:/certs
       - ${DOCKERDIR}/certs/exports/private:/private
 
+  ############################# HOMEPAGE
+  # Homarr - A simple, yet powerful dashboard for your server
+  homarr:
+    container_name: homarr
+    image: ghcr.io/ajnart/homarr:latest
+    networks:
+      brunswick:
+    ports:
+      - 7575:7575
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${APPDIR}/homarr/configs:/app/data/configs
+      - ${APPDIR}/homarr/icons:/app/public/icons
+      - ${APPDIR}/homarr/data:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.homarr-rtr.entrypoints=websecure
+      - traefik.http.routers.homarr-rtr.rule=Host(`$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.homarr-rtr.middlewares=chain-oauth@file
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
   ############################# INDEXERS
   # Prowlarr - Hydra and Jackett combined
   prowlarr:
@@ -271,11 +304,9 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.prowlarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-rtr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
-      - traefik.http.routers.prowlarr-rtr-bypass.priority=100
       # HTTP Routers Auth
       - traefik.http.routers.prowlarr-rtr.entrypoints=websecure
       - traefik.http.routers.prowlarr-rtr.rule=Host(`prowlarr.$DOMAINNAME`)
-      - traefik.http.routers.prowlarr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.prowlarr-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.prowlarr-rtr.middlewares=chain-oauth@file
@@ -322,11 +353,9 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-rtr-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
-      - traefik.http.routers.sabnzbd-rtr-bypass.priority=100
       # HTTP Routers Auth
       - traefik.http.routers.sabnzbd-rtr.entrypoints=websecure
       - traefik.http.routers.sabnzbd-rtr.rule=Host(`sabnzbd.$DOMAINNAME`)
-      - traefik.http.routers.sabnzbd-rtr.priority=99
       # Middlewares
       - traefik.http.routers.sabnzbd-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.sabnzbd-rtr.middlewares=chain-oauth@file
@@ -425,7 +454,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.autobrr-rtr.entrypoints=websecure
       - traefik.http.routers.autobrr-rtr.rule=Host(`autobrr.$DOMAINNAME`)
-      - traefik.http.routers.autobrr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.autobrr-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -497,11 +525,9 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-rtr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
-      - traefik.http.routers.radarr-rtr-bypass.priority=100
       # HTTP Routers Auth
       - traefik.http.routers.radarr-rtr.entrypoints=websecure
       - traefik.http.routers.radarr-rtr.rule=Host(`radarr.$DOMAINNAME`)
-      - traefik.http.routers.radarr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.radarr-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.radarr-rtr.middlewares=chain-oauth@file
@@ -553,11 +579,9 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-rtr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
-      - traefik.http.routers.sonarr-rtr-bypass.priority=100
       # HTTP Routers Auth
       - traefik.http.routers.sonarr-rtr.entrypoints=websecure
       - traefik.http.routers.sonarr-rtr.rule=Host(`sonarr.$DOMAINNAME`)
-      - traefik.http.routers.sonarr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.sonarr-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.sonarr-rtr.middlewares=chain-oauth@file
@@ -615,7 +639,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.tdarr-rtr.entrypoints=websecure
       - traefik.http.routers.tdarr-rtr.rule=Host(`tdarr.$DOMAINNAME`)
-      - traefik.http.routers.tdarr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.tdarr-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -664,7 +687,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.plex-rtr.entrypoints=websecure
       - traefik.http.routers.plex-rtr.rule=Host(`plex.$DOMAINNAME`)
-      - traefik.http.routers.plex-rtr.priority=99
       # Middlewares
       - traefik.http.routers.plex-rtr.middlewares=chain-no-auth@file
       # HTTP Services
@@ -709,10 +731,9 @@ services:
       - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.tautulli-rtr.entrypoints=websecure
-      - traefik.http.routers.tautulli-rtr.rule=Host(`$DOMAINNAME`)
-      - traefik.http.routers.tautulli-rtr.priority=99
+      - traefik.http.routers.tautulli-rtr.rule=Host(`tautulli.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tautulli-rtr.middlewares=chain-oauth@file
+      - traefik.http.routers.tautulli-rtr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.tautulli-rtr.service=tautulli-svc
       - traefik.http.services.tautulli-svc.loadbalancer.server.port=8181
@@ -753,7 +774,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.overseerr-rtr.entrypoints=websecure
       - traefik.http.routers.overseerr-rtr.rule=Host(`overseerr.$DOMAINNAME`)
-      - traefik.http.routers.overseerr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.overseerr-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -793,7 +813,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.metube-rtr.entrypoints=websecure
       - traefik.http.routers.metube-rtr.rule=Host(`metube.$DOMAINNAME`)
-      - traefik.http.routers.metube-rtr.priority=99
       # Middlewares
       - traefik.http.routers.metube-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -846,10 +865,8 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.calibre-rtr.entrypoints=websecure
       - traefik.http.routers.calibre-rtr.rule=Host(`calibre.$DOMAINNAME`)
-      - traefik.http.routers.calibre-rtr.priority=99
       - traefik.http.routers.calibre-server-rtr.entrypoints=websecure
       - traefik.http.routers.calibre-server-rtr.rule=Host(`books.$DOMAINNAME`)
-      - traefik.http.routers.calibre-server-rtr.priority=100
       # Middlewares
       - traefik.http.routers.calibre-rtr.middlewares=chain-oauth@file
       - traefik.http.routers.calibre-server-rtr.middlewares=chain-no-auth@file
@@ -903,7 +920,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.dozzle-rtr.entrypoints=websecure
       - traefik.http.routers.dozzle-rtr.rule=Host(`dozzle.$DOMAINNAME`)
-      - traefik.http.routers.dozzle-rtr.priority=99
       # Middlewares
       - traefik.http.routers.dozzle-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -938,7 +954,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.notifiarr-rtr.entrypoints=websecure
       - traefik.http.routers.notifiarr-rtr.rule=Host(`notifiarr.$DOMAINNAME`)
-      - traefik.http.routers.notifiarr-rtr.priority=99
       # Middlewares
       - traefik.http.routers.notifiarr-rtr.middlewares=chain-oauth@file
       # HTTP Services
@@ -989,7 +1004,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.vaultwarden-rtr.entrypoints=websecure
       - traefik.http.routers.vaultwarden-rtr.rule=Host(`vaultwarden.$DOMAINNAME`)
-      - traefik.http.routers.vaultwarden-rtr.priority=99
       # Middlewares
       - traefik.http.routers.vaultwarden-rtr.middlewares=chain-oauth@file
       # HTTP Services
