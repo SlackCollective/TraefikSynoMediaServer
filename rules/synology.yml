@@ -13,5 +13,9 @@ http:
     syno-svc:
       loadBalancer:
         passHostHeader: true
+        serversTransport: "synology"
         servers:
           - url: "https://localip:port/"
+  serversTransports:
+    synology:
+      insecureSkipVerify: true
