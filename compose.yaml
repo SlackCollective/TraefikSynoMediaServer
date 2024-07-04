@@ -17,8 +17,6 @@ secrets:
     file: $DOCKERDIR/secrets/cf_dns_api_token
   traefik_forward_auth:
     file: $DOCKERDIR/secrets/traefik_forward_auth
-  # plex_claim:
-    # file: $DOCKERDIR/secrets/plex_claim
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
@@ -48,14 +46,14 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --api=true
       - --api.dashboard=true
-      - --api.insecure=true
+      - --api.insecure=false
       - --ping=true
-      - --serversTransport.insecureSkipVerify=true
+      - --serversTransport.insecureSkipVerify=false
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
-      # - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
       - --log=true
       - --log.filePath=/logs/traefik.log
-      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
       - --accessLog=true
       - --accessLog.filePath=/logs/access.log
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
@@ -91,10 +89,8 @@ services:
       - TZ=$TZ
       - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token    
       - DOMAINNAME # Passing the domain name to traefik container to be able to use the variable in rules. 
-      - DOMAINNAME_TS # Additional Domain variable passthrough to container
     secrets:
       - cf_dns_api_token
-      # - basic_auth_credentials
     labels:
       - traefik.enable=true
       ## Log viewer
@@ -585,7 +581,6 @@ services:
       # Middlewares
       - traefik.http.routers.sonarr-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.sonarr-rtr.middlewares=chain-oauth@file
-      - traefik.http.routers.sonarr-rtr-org.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.sonarr-rtr.service=sonarr-svc
       - traefik.http.routers.sonarr-rtr-bypass.service=sonarr-svc
@@ -670,7 +665,6 @@ services:
       brunswick:
     ports:
       - 32400:32400
-    # network_mode: "host"
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -846,16 +840,16 @@ services:
       - 8082:8080 #Calibre desktop gui
       - 8181:8181 #Calibre desktop gui HTTPS
       - 8085:8081 #Calibre content server gui
-    # devices: # optional (used if Syno has Intel CPU, for HW transcoding)
-      # - /dev/dri:/dev/dri
+    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+      - /dev/dri:/dev/dri
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
       - TITLE=BrunswickBooks
       - CALIBRE_CACHE_DIRECTORY=/cache
-      - CLI_ARGS="--trusted-ips 192.168.1.0/24,172.18.5.0/24"
-      # - DRINODE=/dev/dri/renderD128
+      - CLI_ARGS="--trusted-ips 192.168.1.0/24,172.16.0.0/12"
+      - DRINODE=/dev/dri/renderD128
     volumes:
       - ${APPDIR}/calibre:/config
       - ${APPDIR}/calibre/cache:/cache
