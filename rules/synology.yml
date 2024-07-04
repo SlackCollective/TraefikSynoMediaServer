@@ -1,0 +1,17 @@
+# http routing to DSM
+http:
+  routers:
+    syno-rtr:
+      rule: "Host(`my.domain.nas`)"
+      entryPoints:
+        - websecure
+      service: syno-svc
+      tls:
+        certResolver: dns-cloudflare
+        options: tls-opts@file
+  services:
+    syno-svc:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "https://localip:port/"
