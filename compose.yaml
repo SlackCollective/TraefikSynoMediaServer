@@ -999,7 +999,7 @@ services:
       - traefik.http.routers.vaultwarden-rtr.entrypoints=websecure
       - traefik.http.routers.vaultwarden-rtr.rule=Host(`vaultwarden.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.vaultwarden-rtr.middlewares=chain-oauth@file
+      - traefik.http.routers.vaultwarden-rtr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.vaultwarden-rtr.service=vaultwarden-svc
       - traefik.http.services.vaultwarden-svc.loadbalancer.server.port=80
