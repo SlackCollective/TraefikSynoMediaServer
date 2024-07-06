@@ -621,8 +621,12 @@ services:
       - serverPort=8266
       - webUIPort=8265
       - internalNode=true
+      - inContainer=true
+      - ffmpegVersion=6
       - nodeID=TdarrNode
       - THREADS_WORKER_INIT_TIMEOUT=200000
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ${APPDIR}:/app/server
       - ${APPDIR}/Tdarr/Configs:/app/configs
