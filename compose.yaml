@@ -10,6 +10,13 @@ networks:
     ipam:
       config:
         - subnet: 172.18.5.0/24
+  socketproxy:
+    name: socketproxy
+    external: true
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      parent: eth0
           
 ########################### SECRETS
 secrets:
@@ -29,6 +36,7 @@ services:
       - no-new-privileges:true
     networks:
       brunswick:
+      socketproxy:
     ports:
       - 89:80
       - 449:443
@@ -59,8 +67,8 @@ services:
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       - --accessLog.filters.statusCodes=204-299,400-499,500-599
       - --providers.docker=true
-      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=false
       - --providers.docker.network=brunswick 
       - --entrypoints.websecure.http.tls=true
@@ -81,7 +89,6 @@ services:
       interval: 5s
       retries: 3
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
@@ -114,6 +121,52 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
+
+  # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      socketproxy:
+    ports:
+      - 2375:2375
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOG_LEVEL=err # debug,info,notice,warning,err,crit,alert,emerg
+      ## Variables match the URL prefix (i.e. AUTH blocks access to /auth/* parts of the API, etc.).
+      # 0 to revoke access.
+      # 1 to grant access.
+      ## Granted by Default
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      ## Revoked by Default
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1 # Watchtower
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1 # Traefik, portainer, etc.
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=0 # Portainer
+      - INFO=1 # Portainer
+      - NETWORKS=0 # Portainer
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=0 # Portainer
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=0 # Portainer
+      - VOLUMES=0 # Portainer
 
   # Google OAuth - Single Sign On using OAuth 2.0
   oauth:
@@ -251,7 +304,6 @@ services:
     environment:
       - TZ=${TZ}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ${APPDIR}/homarr/configs:/app/data/configs
       - ${APPDIR}/homarr/icons:/app/public/icons
       - ${APPDIR}/homarr/data:/data
@@ -889,9 +941,13 @@ services:
     image: qmcgaw/deunhealth
     container_name: deunhealth
     restart: unless-stopped
-    network_mode: "none"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      socketproxy:
+    environment:
+      LOG_LEVEL: info
+      HEALTH_SERVER_ADDRESS: 127.0.0.1:9999
+      TZ: $TZ
+      DOCKER_HOST: tcp://socket-proxy:2375
       
   # Dozzle - Real-time Docker Log Viewer
   dozzle:
@@ -900,6 +956,7 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+      socketproxy:
     ports:
       - 9999:8080
     environment:
@@ -911,8 +968,7 @@ services:
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
       - DOZZLE_TAILSIZE=300
       - DOZZLE_ENABLE_ACTIONS=true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - DOCKER_HOST=tcp://socket-proxy:2375
     labels:
       - traefik.enable=true
       # HTTP Routers Auth
