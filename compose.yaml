@@ -29,7 +29,7 @@ services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:latest
+    image: traefik:comte
     container_name: traefik
     restart: unless-stopped
     security_opt:
