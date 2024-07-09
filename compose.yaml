@@ -292,28 +292,32 @@ services:
       - ${DOCKERDIR}/certs/exports/private:/private
 
   ############################# HOMEPAGE
-  # Homarr - A simple, yet powerful dashboard for your server
-  homarr:
-    container_name: homarr
-    image: ghcr.io/ajnart/homarr:latest
+  # Homepage - A dashboard for your server
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
     networks:
       brunswick:
+      socketproxy:
     ports:
-      - 7575:7575
-    restart: unless-stopped
-    environment:
-      - TZ=${TZ}
+      - 3000:3000
     volumes:
-      - ${APPDIR}/homarr/configs:/app/data/configs
-      - ${APPDIR}/homarr/icons:/app/public/icons
-      - ${APPDIR}/homarr/data:/data
+      - ${APPDIR}/homepage:/app/config # Make sure your local config directory exists
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     labels:
       - traefik.enable=true
       # HTTP Routers Auth
-      - traefik.http.routers.homarr-rtr.entrypoints=websecure
-      - traefik.http.routers.homarr-rtr.rule=Host(`$DOMAINNAME`)
+      - traefik.http.routers.homepage-rtr.entrypoints=websecure
+      - traefik.http.routers.homepage-rtr.rule=Host(`$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.homarr-rtr.middlewares=chain-oauth@file
+      - traefik.http.routers.homepage-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.homepage-rtr.service=homepage-svc
+      - traefik.http.services.homepage-svc.loadbalancer.server.port=3000
       ## Log viewer
       # - dozzle
       ## Updating and notifications
@@ -321,6 +325,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   ############################# INDEXERS
   # Prowlarr - Hydra and Jackett combined
@@ -369,6 +375,14 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Sourcing
+      - homepage.name=Prowlarr
+      - homepage.icon=prowlarr.png
+      - homepage.href=https://prowlarr.$DOMAINNAME
+      - homepage.widget.type=prowlarr
+      - homepage.widget.url=http://172.29.5.254:9696
+      - homepage.widget.key=$PROWLARR_API_KEY
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -418,6 +432,14 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Sourcing
+      - homepage.name=Sabnzbd
+      - homepage.icon=sabnzbd.png
+      - homepage.href=https://sabnzbd.$DOMAINNAME
+      - homepage.widget.type=sabnzbd
+      - homepage.widget.url=http://172.29.5.254:9998
+      - homepage.widget.key=$SABNZBD_API_KEY
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -455,6 +477,15 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Sourcing
+      - homepage.name=qBittorrent
+      - homepage.icon=qbittorrent.png
+      - homepage.href=https://qbittorrent.$DOMAINNAME
+      - homepage.widget.type=qbittorrent
+      - homepage.widget.url=http://172.29.5.254:9997
+      - homepage.widget.username=$ORGNAME
+      - homepage.widget.password=$ORGPASS
 
   # qbit_manage - torrent client management
   qbit_manage:
@@ -590,6 +621,15 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=PVR
+      - homepage.name=Radarr
+      - homepage.icon=radarr.png
+      - homepage.href=https://radarr.$DOMAINNAME
+      - homepage.widget.type=radarr
+      - homepage.widget.url=http://172.29.5.254:7878
+      - homepage.widget.key=$RADARR_API_KEY
+      - homepage.widget.enableQueue=true
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -644,6 +684,15 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=PVR
+      - homepage.name=Sonarr
+      - homepage.icon=sonarr.png
+      - homepage.href=https://sonarr.$DOMAINNAME
+      - homepage.widget.type=sonarr
+      - homepage.widget.url=http://172.29.5.254:8989
+      - homepage.widget.key=$SONARR_API_KEY
+      - homepage.widget.enableQueue=true
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -749,6 +798,15 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Theatre
+      - homepage.name=Plex
+      - homepage.icon=plex.png
+      - homepage.href=https://plex.$DOMAINNAME
+      - homepage.widget.type=plex
+      - homepage.widget.url=http://172.29.5.254:32400
+      - homepage.widget.key=$PLEX_TOKEN
+      - homepage.widget.fields=["streams", "movies", "tv"]
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -794,6 +852,17 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Theatre
+      - homepage.name=Tautulli
+      - homepage.icon=tautulli.png
+      - homepage.href=https://tautulli.$DOMAINNAME
+      - homepage.widget.type=tautulli
+      - homepage.widget.url=http://172.29.5.254:8182
+      - homepage.widget.enableUser=true
+      - homepage.widget.showEpisodeNumber=true
+      - homepage.widget.expandOneStreamToTwoRows=true
+      - homepage.widget.key=$TAUTULLI_API_KEY
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
