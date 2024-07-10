@@ -256,6 +256,7 @@ services:
       - FIREWALL_VPN_INPUT_PORTS=3996 #uncomment/edit if your provider offers port fwd
       - HTTPPROXY=off #change to on if you wish to enable
       - SHADOWSOCKS=off #change to on if you wish to enable
+      - LOG_LEVEL=error
     volumes:
       - ${APPDIR}/gluetun:/gluetun
     labels:
