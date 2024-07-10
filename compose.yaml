@@ -235,6 +235,7 @@ services:
     networks:
       brunswick:
     ports:
+      - 8000:8000 # http control server
       - 9997:8080 # qBittorrent WebUI
       - 3996:3996 # qBittorrent seeding port
       - 3996:3996/udp # qBittorrent seeding port
@@ -269,6 +270,12 @@ services:
       # HTTP Services
       - traefik.http.routers.gluetun-qbittorrent-rtr.service=gluetun-svc # qBittorrent
       - traefik.http.services.gluetun-svc.loadbalancer.server.port=8080 # qBittorrent
+      ## Homepage integration and widgets
+      - homepage.group=Management
+      - homepage.name=Gluetun
+      - homepage.icon=gluetun.png
+      - homepage.widget.type=gluetun
+      - homepage.widget.url=http://172.29.5.254:8000
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -375,14 +382,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      ## Homepage integration and widgets
-      - homepage.group=Sourcing
-      - homepage.name=Prowlarr
-      - homepage.icon=prowlarr.png
-      - homepage.href=https://prowlarr.$DOMAINNAME
-      - homepage.widget.type=prowlarr
-      - homepage.widget.url=http://172.29.5.254:9696
-      - homepage.widget.key=$PROWLARR_API_KEY
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -751,6 +750,13 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Homepage integration and widgets
+      - homepage.group=Management
+      - homepage.name=Tdarr
+      - homepage.icon=tdarr.png
+      - homepage.href=https://tdarr.$DOMAINNAME
+      - homepage.widget.type=tdarr
+      - homepage.widget.url=http://172.29.5.254:8265
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -780,7 +786,6 @@ services:
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
-      - ${DATADIR}/media:/transcode
     labels:
       - traefik.enable=true
       # HTTP Routers Auth
