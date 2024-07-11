@@ -252,7 +252,7 @@ services:
       - VPN_SERVICE_PROVIDER=custom
       - VPN_TYPE=wireguard
       - VPN_INTERFACE=tun0
-      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.1.0/24 #needed for *Arr connections
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.1.0/24,10.0.0.0/8 #needed for *Arr connections
       - FIREWALL_VPN_INPUT_PORTS=3996 #uncomment/edit if your provider offers port fwd
       - HTTPPROXY=off #change to on if you wish to enable
       - SHADOWSOCKS=off #change to on if you wish to enable
@@ -963,14 +963,14 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
+    # security_opt:
+      # - seccomp:unconfined
     networks:
       brunswick:
     ports:
       - 8082:8080 #Calibre desktop gui
-      - 8181:8181 #Calibre desktop gui HTTPS
-      - 8085:8081 #Calibre content server gui
+      # - 8181:8181 #Calibre desktop gui HTTPS
+      # - 8085:8081 #Calibre content server gui # using calibre-web instead
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -980,7 +980,6 @@ services:
       - TITLE=BrunswickBooks
       - CALIBRE_CACHE_DIRECTORY=/cache
       - CLI_ARGS="--trusted-ips 192.168.1.0/24,172.16.0.0/12"
-      - DRINODE=/dev/dri/renderD128
     volumes:
       - ${APPDIR}/calibre:/config
       - ${APPDIR}/calibre/cache:/cache
@@ -990,16 +989,58 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.calibre-rtr.entrypoints=websecure
       - traefik.http.routers.calibre-rtr.rule=Host(`calibre.$DOMAINNAME`)
-      - traefik.http.routers.calibre-server-rtr.entrypoints=websecure
-      - traefik.http.routers.calibre-server-rtr.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.calibre-rtr.middlewares=chain-oauth@file
-      - traefik.http.routers.calibre-server-rtr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.calibre-rtr.service=calibre-svc
       - traefik.http.services.calibre-svc.loadbalancer.server.port=8080
-      - traefik.http.routers.calibre-server-rtr.service=calibre-server-svc
-      - traefik.http.services.calibre-server-svc.loadbalancer.server.port=8081
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
+  # CalibreWeb – Frontend content server
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web:latest
+    container_name: calibre-web
+    healthcheck:
+      test: curl --fail https://cloudflare.com:443 || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 8083:8083 #Calibre Web gui
+    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DOCKER_MODS=linuxserver/mods:universal-calibre
+      - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional
+      - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure
+    volumes:
+      - ${APPDIR}/calibreweb:/config
+      - ${DATADIR}:/data
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.calibreweb-rtr.entrypoints=websecure
+      - traefik.http.routers.calibreweb-rtr.rule=Host(`books.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.calibreweb-rtr.middlewares=chain-no-auth@file
+      # HTTP Services
+      - traefik.http.routers.calibreweb-rtr.service=calibreweb-svc
+      - traefik.http.services.calibreweb-svc.loadbalancer.server.port=8083
       ## Log viewer
       - dozzle
       ## Updating and notifications
