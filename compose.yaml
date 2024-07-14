@@ -1027,7 +1027,6 @@ services:
       - DOZZLE_BASE=/
       - DOZZLE_LEVEL=error
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
-      - DOZZLE_TAILSIZE=300
       - DOZZLE_ENABLE_ACTIONS=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
