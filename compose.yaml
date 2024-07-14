@@ -7,16 +7,6 @@ networks:
     enable_ipv6: false
     driver_opts:
       parent: eth0
-    ipam:
-      config:
-        - subnet: 172.18.5.0/24
-  socketproxy:
-    name: socketproxy
-    external: true
-    driver: bridge
-    enable_ipv6: false
-    driver_opts:
-      parent: eth0
           
 ########################### SECRETS
 secrets:
@@ -36,7 +26,6 @@ services:
       - no-new-privileges:true
     networks:
       brunswick:
-      socketproxy:
     ports:
       - 89:80
       - 449:443
@@ -60,15 +49,17 @@ services:
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
       - --log=true
+      - --log.maxSize=1
+      - --log.maxAge=3
       - --log.filePath=/logs/traefik.log
-      - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      - --accessLog=true
-      - --accessLog.filePath=/logs/access.log
-      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
-      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      # - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      # - --accessLog=true
+      # - --accessLog.filePath=/logs/access.log
+      # - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      # - --accessLog.filters.statusCodes=204-299,400-499,500-599
       - --providers.docker=true
-      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
+      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=false
       - --providers.docker.network=brunswick 
       - --entrypoints.websecure.http.tls=true
@@ -89,6 +80,7 @@ services:
       interval: 5s
       retries: 3
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
@@ -101,7 +93,7 @@ services:
     labels:
       - traefik.enable=true
       ## Log viewer
-      # - dozzle
+      # - dozzle # Won't work with logs sent to file, above
       # HTTP Routers
       - traefik.http.routers.traefik-rtr.entrypoints=websecure
       - traefik.http.routers.traefik-rtr.rule=Host(`traefik.$DOMAINNAME`)
@@ -112,7 +104,7 @@ services:
       - traefik.http.routers.ping.service=ping@internal
       # Middlewares
       # - "traefik.http.routers.traefik-rtr.middlewares=chain-no-auth@file" # For No Authentication
-      #- "traefik.http.routers.traefik-rtr.middlewares=chain-basic-auth@file" # For Basic HTTP Authentication
+      # - "traefik.http.routers.traefik-rtr.middlewares=chain-basic-auth@file" # For Basic HTTP Authentication
       - traefik.http.routers.traefik-rtr.middlewares=chain-oauth@file # For Google OAuth
       ## Updating and notifications
       - org.hotio.pullio.notify=true
@@ -121,52 +113,6 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
-
-  # Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
-  socket-proxy:
-    image: tecnativa/docker-socket-proxy
-    container_name: socket-proxy
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-    networks:
-      socketproxy:
-    ports:
-      - 2375:2375
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - LOG_LEVEL=err # debug,info,notice,warning,err,crit,alert,emerg
-      ## Variables match the URL prefix (i.e. AUTH blocks access to /auth/* parts of the API, etc.).
-      # 0 to revoke access.
-      # 1 to grant access.
-      ## Granted by Default
-      - EVENTS=1
-      - PING=1
-      - VERSION=1
-      ## Revoked by Default
-      # Security critical
-      - AUTH=0
-      - SECRETS=0
-      - POST=1 # Watchtower
-      # Not always needed
-      - BUILD=0
-      - COMMIT=0
-      - CONFIGS=0
-      - CONTAINERS=1 # Traefik, portainer, etc.
-      - DISTRIBUTION=0
-      - EXEC=0
-      - IMAGES=0 # Portainer
-      - INFO=1 # Portainer
-      - NETWORKS=0 # Portainer
-      - NODES=0
-      - PLUGINS=0
-      - SERVICES=0 # Portainer
-      - SESSION=0
-      - SWARM=0
-      - SYSTEM=0
-      - TASKS=0 # Portainer
-      - VOLUMES=0 # Portainer
 
   # Google OAuth - Single Sign On using OAuth 2.0
   oauth:
@@ -252,11 +198,10 @@ services:
       - VPN_SERVICE_PROVIDER=custom
       - VPN_TYPE=wireguard
       - VPN_INTERFACE=tun0
-      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.1.0/24,10.0.0.0/8 #needed for *Arr connections
-      - FIREWALL_VPN_INPUT_PORTS=3996 #uncomment/edit if your provider offers port fwd
+      - FIREWALL_OUTBOUND_SUBNETS=${INTERNAL} #needed for *Arr connections
+      - FIREWALL_VPN_INPUT_PORTS=${VPN_PORT} #uncomment/edit if your provider offers port fwd
       - HTTPPROXY=off #change to on if you wish to enable
       - SHADOWSOCKS=off #change to on if you wish to enable
-      - LOG_LEVEL=error
     volumes:
       - ${APPDIR}/gluetun:/gluetun
     labels:
@@ -276,7 +221,7 @@ services:
       - homepage.name=Gluetun
       - homepage.icon=gluetun.png
       - homepage.widget.type=gluetun
-      - homepage.widget.url=http://172.29.5.254:8000
+      - homepage.widget.url=http://gluetun:8000
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -307,11 +252,11 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-      socketproxy:
     ports:
       - 3000:3000
     volumes:
       - ${APPDIR}/homepage:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -333,8 +278,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      ## Restart unhealthy container
-      - deunhealth.restart.on.unhealthy=true
 
   ############################# INDEXERS
   # Prowlarr - Hydra and Jackett combined
@@ -363,7 +306,7 @@ services:
       - ${DATADIR}/usenet:/data/usenet:rw
     labels:
       - traefik.enable=true
-      # HTTP Routers Auth Bypass
+      # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-rtr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       # HTTP Routers Auth
@@ -438,7 +381,7 @@ services:
       - homepage.icon=sabnzbd.png
       - homepage.href=https://sabnzbd.$DOMAINNAME
       - homepage.widget.type=sabnzbd
-      - homepage.widget.url=http://172.29.5.254:9998
+      - homepage.widget.url=http://sabnzbd:8080
       - homepage.widget.key=$SABNZBD_API_KEY
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
@@ -483,7 +426,7 @@ services:
       - homepage.icon=qbittorrent.png
       - homepage.href=https://qbittorrent.$DOMAINNAME
       - homepage.widget.type=qbittorrent
-      - homepage.widget.url=http://172.29.5.254:9997
+      - homepage.widget.url=http://gluetun:8080
       - homepage.widget.username=$ORGNAME
       - homepage.widget.password=$ORGPASS
 
@@ -627,7 +570,7 @@ services:
       - homepage.icon=radarr.png
       - homepage.href=https://radarr.$DOMAINNAME
       - homepage.widget.type=radarr
-      - homepage.widget.url=http://172.29.5.254:7878
+      - homepage.widget.url=http://radarr:7878
       - homepage.widget.key=$RADARR_API_KEY
       - homepage.widget.enableQueue=true
       ## Restart unhealthy container
@@ -690,7 +633,7 @@ services:
       - homepage.icon=sonarr.png
       - homepage.href=https://sonarr.$DOMAINNAME
       - homepage.widget.type=sonarr
-      - homepage.widget.url=http://172.29.5.254:8989
+      - homepage.widget.url=http://sonarr:8989
       - homepage.widget.key=$SONARR_API_KEY
       - homepage.widget.enableQueue=true
       ## Restart unhealthy container
@@ -757,7 +700,7 @@ services:
       - homepage.icon=tdarr.png
       - homepage.href=https://tdarr.$DOMAINNAME
       - homepage.widget.type=tdarr
-      - homepage.widget.url=http://172.29.5.254:8265
+      - homepage.widget.url=http://tdarr:8265
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -787,6 +730,7 @@ services:
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
+      - ${DATADIR}/media:/transcode
     labels:
       - traefik.enable=true
       # HTTP Routers Auth
@@ -810,7 +754,7 @@ services:
       - homepage.icon=plex.png
       - homepage.href=https://plex.$DOMAINNAME
       - homepage.widget.type=plex
-      - homepage.widget.url=http://172.29.5.254:32400
+      - homepage.widget.url=http://plex:32400
       - homepage.widget.key=$PLEX_TOKEN
       - homepage.widget.fields=["streams", "movies", "tv"]
       ## Restart unhealthy container
@@ -864,7 +808,7 @@ services:
       - homepage.icon=tautulli.png
       - homepage.href=https://tautulli.$DOMAINNAME
       - homepage.widget.type=tautulli
-      - homepage.widget.url=http://172.29.5.254:8182
+      - homepage.widget.url=http://tautulli:8181
       - homepage.widget.enableUser=true
       - homepage.widget.showEpisodeNumber=true
       - homepage.widget.expandOneStreamToTwoRows=true
@@ -963,14 +907,14 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
-    # security_opt:
-      # - seccomp:unconfined
+    security_opt:
+      - seccomp:unconfined
     networks:
       brunswick:
     ports:
       - 8082:8080 #Calibre desktop gui
       # - 8181:8181 #Calibre desktop gui HTTPS
-      # - 8085:8081 #Calibre content server gui # using calibre-web instead
+      # - 8085:8081 #Calibre content server gui
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -979,7 +923,8 @@ services:
       - TZ=${TZ}
       - TITLE=BrunswickBooks
       - CALIBRE_CACHE_DIRECTORY=/cache
-      - CLI_ARGS="--trusted-ips 192.168.1.0/24,172.16.0.0/12"
+      - CLI_ARGS="--trusted-ips 192.168.0.0/16"
+      - DRINODE=/dev/dri/renderD128
     volumes:
       - ${APPDIR}/calibre:/config
       - ${APPDIR}/calibre/cache:/cache
@@ -989,11 +934,16 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.calibre-rtr.entrypoints=websecure
       - traefik.http.routers.calibre-rtr.rule=Host(`calibre.$DOMAINNAME`)
+      # - traefik.http.routers.calibre-server-rtr.entrypoints=websecure
+      # - traefik.http.routers.calibre-server-rtr.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.calibre-rtr.middlewares=chain-oauth@file
+      # - traefik.http.routers.calibre-server-rtr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.calibre-rtr.service=calibre-svc
       - traefik.http.services.calibre-svc.loadbalancer.server.port=8080
+      # - traefik.http.routers.calibre-server-rtr.service=calibre-server-svc
+      # - traefik.http.services.calibre-server-svc.loadbalancer.server.port=8081
       ## Log viewer
       - dozzle
       ## Updating and notifications
@@ -1042,7 +992,7 @@ services:
       - traefik.http.routers.calibreweb-rtr.service=calibreweb-svc
       - traefik.http.services.calibreweb-svc.loadbalancer.server.port=8083
       ## Log viewer
-      - dozzle
+      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -1050,20 +1000,16 @@ services:
       - org.hotio.pullio.generic.webhook=${PULLIO}
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
-            
+
   ############################# SYSTEM MANAGEMENT/MONITORING
   # deunhealth - Restart unhealthy containers, e.g. containers depending on VPN
   deunhealth:
     image: qmcgaw/deunhealth
     container_name: deunhealth
     restart: unless-stopped
-    networks:
-      socketproxy:
-    environment:
-      LOG_LEVEL: info
-      HEALTH_SERVER_ADDRESS: 127.0.0.1:9999
-      TZ: $TZ
-      DOCKER_HOST: tcp://socket-proxy:2375
+    network_mode: "none"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       
   # Dozzle - Real-time Docker Log Viewer
   dozzle:
@@ -1072,7 +1018,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-      socketproxy:
     ports:
       - 9999:8080
     environment:
@@ -1084,7 +1029,8 @@ services:
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
       - DOZZLE_TAILSIZE=300
       - DOZZLE_ENABLE_ACTIONS=true
-      - DOCKER_HOST=tcp://socket-proxy:2375
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - traefik.enable=true
       # HTTP Routers Auth
@@ -1093,8 +1039,8 @@ services:
       # Middlewares
       - traefik.http.routers.dozzle-rtr.middlewares=chain-oauth@file
       # HTTP Services
-      - traefik.http.routers.dozzle-rtr.service=dozzle-svc
-      - traefik.http.services.dozzle-svc.loadbalancer.server.port=8080
+      # - traefik.http.routers.dozzle-rtr.service=dozzle-svc
+      # - traefik.http.services.dozzle-svc.loadbalancer.server.port=8080
       ## Log viewer
       # - dozzle
       ## Updating and notifications
