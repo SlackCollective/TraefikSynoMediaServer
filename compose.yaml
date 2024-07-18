@@ -59,12 +59,12 @@ services:
       # - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       # - --accessLog.filters.statusCodes=204-299,400-499,500-599
       # Metrics
-      # - --metrics.prometheus=true
-      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      # - --metrics.prometheus.addEntryPointsLabels=true
-      # - --metrics.prometheus.addServicesLabels=true
-      # - --entryPoints.metrics.address=:8899
-      # - --metrics.prometheus.entryPoint=metrics
+      - --metrics.prometheus=true
+      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+      - --entryPoints.metrics.address=:8899
+      - --metrics.prometheus.entryPoint=metrics
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
@@ -185,7 +185,7 @@ services:
   gluetun:
     image: qmcgaw/gluetun
     container_name: gluetun
-    restart: unless-stopped
+    restart: always
     networks:
       brunswick:
     ports:
@@ -193,8 +193,6 @@ services:
       - 9997:8080 # qBittorrent WebUI
       - 3996:3996 # qBittorrent seeding port
       - 3996:3996/udp # qBittorrent seeding port
-    security_opt:
-      - no-new-privileges:true
     cap_add:
       - NET_ADMIN
     devices:
@@ -208,8 +206,8 @@ services:
       - VPN_INTERFACE=tun0
       - FIREWALL_OUTBOUND_SUBNETS=${INTERNAL} #needed for *Arr connections
       - FIREWALL_VPN_INPUT_PORTS=${VPN_PORT} #uncomment/edit if your provider offers port fwd
-      - HTTPPROXY=off #change to on if you wish to enable
-      - SHADOWSOCKS=off #change to on if you wish to enable
+      # - HTTPPROXY=off #change to on if you wish to enable
+      # - SHADOWSOCKS=off #change to on if you wish to enable
     volumes:
       - ${APPDIR}/gluetun:/gluetun
     labels:
@@ -229,7 +227,7 @@ services:
       - homepage.name=Gluetun
       - homepage.icon=gluetun.png
       - homepage.widget.type=gluetun
-      - homepage.widget.url=http://172.29.5.254:8000
+      - homepage.widget.url=http://gluetun:8000
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -328,7 +326,7 @@ services:
       - traefik.http.routers.prowlarr-rtr-bypass.service=prowlarr-svc
       - traefik.http.services.prowlarr-svc.loadbalancer.server.port=9696
       ## Log viewer
-      # - dozzle
+      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -580,7 +578,7 @@ services:
       - homepage.widget.type=radarr
       - homepage.widget.url=http://radarr:7878
       - homepage.widget.key=$RADARR_API_KEY
-      - homepage.widget.enableQueue=true
+      - homepage.widget.enableQueue=false
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -643,7 +641,7 @@ services:
       - homepage.widget.type=sonarr
       - homepage.widget.url=http://sonarr:8989
       - homepage.widget.key=$SONARR_API_KEY
-      - homepage.widget.enableQueue=true
+      - homepage.widget.enableQueue=false
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -948,7 +946,7 @@ services:
       - traefik.http.routers.calibre-rtr.service=calibre-svc
       - traefik.http.services.calibre-svc.loadbalancer.server.port=8080
       ## Log viewer
-      - dozzle
+      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -1133,7 +1131,7 @@ services:
       - traefik.http.routers.vaultwarden-rtr.service=vaultwarden-svc
       - traefik.http.services.vaultwarden-svc.loadbalancer.server.port=80
       ## Log viewer
-      - dozzle
+      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
