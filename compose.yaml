@@ -63,8 +63,8 @@ services:
       - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
       - --metrics.prometheus.addEntryPointsLabels=true
       - --metrics.prometheus.addServicesLabels=true
-      - --entryPoints.metrics.address=:8899
       - --metrics.prometheus.entryPoint=metrics
+      - --entryPoints.metrics.address=:8899
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
