@@ -29,16 +29,13 @@ services:
     ports:
       - 89:80
       - 449:443
-      # - 8089:8080 #Web UI (enabled by --api.insecure=true)
-      # - 8086:8081 #ping
-      # - 8899:8899 #metrics
+      - 8089:8080 #Web UI (enabled by --api.insecure=true)
     command: # CLI arguments
       - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --entrypoints.traefik.address=:8080
-      - --entrypoints.ping.address=:8081
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
@@ -59,12 +56,12 @@ services:
       # - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
       # - --accessLog.filters.statusCodes=204-299,400-499,500-599
       # Metrics
+      - --metrics
       - --metrics.prometheus=true
       - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
       - --metrics.prometheus.addEntryPointsLabels=true
       - --metrics.prometheus.addServicesLabels=true
-      - --metrics.prometheus.entryPoint=metrics
-      - --entryPoints.metrics.address=:8899
+      - --metrics.prometheus.addrouterslabels=true
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
@@ -536,11 +533,7 @@ services:
       prowlarr:
         condition: service_healthy
     healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s   
+      test: curl -f http://localhost:7878/api/v3/health?apikey=$RADARR_API_KEY || exit 1
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -598,11 +591,7 @@ services:
       prowlarr:
         condition: service_healthy
     healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
+      test: curl -f http://localhost:8989/api/v3/health?apikey=$SONARR_API_KEY || exit 1
     restart: unless-stopped
     environment:
       - PUID=${PUID}
@@ -656,11 +645,7 @@ services:
       - 8265:8265
       - 8266:8266
     healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
+      test: wget --no-verbose --tries=1 --spider http://localhost:8265/ || exit 1
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -1008,6 +993,91 @@ services:
       - deunhealth.restart.on.unhealthy=true
 
   ############################# SYSTEM MANAGEMENT/MONITORING
+  # prometheus - stat collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command: # CLI arguments
+      - --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      brunswick:
+    ports:
+      - 9090:9090
+    volumes:
+      - ${APPDIR}/prometheus/data:/prometheus
+      - ${APPDIR}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.prometheus.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.prometheus.service=prometheus
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  # grafana - log visualiser
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    user: "1031:65539"
+    networks:
+      brunswick:
+    ports:
+      - 3160:3160
+    volumes:
+      - ${APPDIR}/grafana:/var/lib/grafana
+    environment:
+      - GF_SERVER_DOMAIN=${DOMAINNAME}
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAINNAME}
+      - GF_SERVER_HTTP_ADDRESS=0.0.0.0
+      - GF_SERVER_HTTP_PORT=3160
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_OAUTH_SKIP_ORG_ROLE_UPDATE_SYNC=true
+      - GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP=true
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_DISABLE_SIGNOUT_MENU=true
+      - GF_AUTH_SKIP_ORG_ROLE_SYNC=true
+      - GF_AUTH_GOOGLE_ENABLED=true
+      - GF_AUTH_GOOGLE_CLIENT_ID=${GOOGLEID}
+      - GF_AUTH_GOOGLE_CLIENT_SECRET=${GOOGLESECRET}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${ORGPASS}
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:465
+      - GF_SMTP_USER=${SMTP_USER}
+      - GF_SMTP_PASSWORD=${SMTP_PASS}
+    labels:
+      - traefik.enable=true
+      # HTTP Routers Auth
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAINNAME}`)
+      # Middlewares
+      - traefik.http.routers.grafana.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.grafana.service=grafana
+      - traefik.http.services.grafana.loadbalancer.server.port=3160
+      ## Log viewer
+      # - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
   # deunhealth - Restart unhealthy containers, e.g. containers depending on VPN
   deunhealth:
     image: qmcgaw/deunhealth
