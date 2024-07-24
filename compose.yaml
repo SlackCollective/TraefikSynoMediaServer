@@ -698,7 +698,7 @@ services:
   ############################# HOME THEATRE
   # Plex - Media Player
   plex:
-    image: lscr.io/linuxserver/plex:latest
+    image: plexinc/pms-docker:latest
     container_name: plex
     healthcheck:
       test: curl --fail https://cloudflare.com:443 || exit 1
@@ -710,17 +710,27 @@ services:
     networks:
       brunswick:
     ports:
-      - 32400:32400
+      - 32400:32400/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
+      - PLEX_UID=${PUID}
+      - PLEX_GID=${PGID}
       - TZ=${TZ}
-      - VERSION=docker
+      - HOSTNAME=BrunswickMedia
+      # - PLEX_CLAIM= #only for initial setup
+      - ADVERTISE_IP=${ADVERTISEPLEX}
+      - ALLOWED_NETWORKS=172.28.6.0/24,192.168.1.0/24
     volumes:
-      - ${APPDIR}/plex:/config:rw
-      - ${DATADIR}/media:/data/media:rw
+      - ${APPDIR}/plex:/config
+      - ${DATADIR}/media:/data/media
       - ${DATADIR}/media:/transcode
     labels:
       - traefik.enable=true
@@ -782,7 +792,7 @@ services:
       - traefik.http.routers.tautulli-rtr.entrypoints=websecure
       - traefik.http.routers.tautulli-rtr.rule=Host(`tautulli.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tautulli-rtr.middlewares=chain-oauth@file
+      - traefik.http.routers.tautulli-rtr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.tautulli-rtr.service=tautulli-svc
       - traefik.http.services.tautulli-svc.loadbalancer.server.port=8181
@@ -1024,7 +1034,7 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-
+      
   # grafana - log visualiser
   grafana:
     image: grafana/grafana-oss:latest
