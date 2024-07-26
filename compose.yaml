@@ -653,12 +653,17 @@ services:
       - ${DATADIR}/media/Transcode:/temp
       - ${DATADIR}:/data
     labels:
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.tdarr-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.tdarr-rtr-bypass.rule=Host(`tdarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TDARR_API_KEY`) || Query(`apikey`, `$TDARR_API_KEY`))
       # HTTP Routers Auth
       - traefik.http.routers.tdarr-rtr.entrypoints=websecure
       - traefik.http.routers.tdarr-rtr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
+      - traefik.http.routers.tdarr-rtr-bypass.middlewares=chain-no-auth@file
       - traefik.http.routers.tdarr-rtr.middlewares=chain-oauth@file
       # HTTP Services
+      - traefik.http.routers.tdarr-rtr-bypass.service=tdarr-svc
       - traefik.http.routers.tdarr-rtr.service=tdarr-svc
       - traefik.http.services.tdarr-svc.loadbalancer.server.port=8265
       ## Log viewer
