@@ -384,7 +384,7 @@ services:
     network_mode: "service:gluetun"
     depends_on:
       gluetun:
-        condition: service_healthy
+        condition: service_started
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     environment:
@@ -510,11 +510,11 @@ services:
       - 7878:7878
     depends_on:
       sabnzbd:
-        condition: service_healthy
+        condition: service_started
       qbittorrent:
-        condition: service_healthy
+        condition: service_started
       prowlarr:
-        condition: service_healthy
+        condition: service_started
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -567,11 +567,11 @@ services:
       - 8989:8989
     depends_on:
       sabnzbd:
-        condition: service_healthy
+        condition: service_started
       qbittorrent:
-        condition: service_healthy
+        condition: service_started
       prowlarr:
-        condition: service_healthy
+        condition: service_started
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
