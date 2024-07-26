@@ -53,15 +53,15 @@ services:
       # - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
       - --accessLog=true
       - --accessLog.filePath=/logs/access.log
-      # - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
-      # - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
       # Metrics
       - --metrics
       - --metrics.prometheus=true
       - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
       - --metrics.prometheus.addEntryPointsLabels=true
       - --metrics.prometheus.addServicesLabels=true
-      - --metrics.prometheus.addrouterslabels=true
+      - --metrics.prometheus.addRoutersLabels=true
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
@@ -291,18 +291,11 @@ services:
       brunswick:
     ports:
       - 9696:9696
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      # - ARGS=
     volumes:
       - ${APPDIR}/prowlarr:/config:rw
       - ${DATADIR}/torrents:/data/torrents:rw
@@ -341,12 +334,6 @@ services:
       brunswick:
     ports:
       - 9998:8080
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     environment:
       - PUID=${PUID}
@@ -398,12 +385,6 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s 
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     environment:
@@ -432,7 +413,9 @@ services:
       - homepage.widget.url=http://gluetun:8080
       - homepage.widget.username=$ORGNAME
       - homepage.widget.password=$ORGPASS
-
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
   # qbit_manage - torrent client management
   qbit_manage:
     image: bobokun/qbit_manage
@@ -532,8 +515,6 @@ services:
         condition: service_healthy
       prowlarr:
         condition: service_healthy
-    healthcheck:
-      test: curl -f http://localhost:7878/api/v3/health?apikey=$RADARR_API_KEY || exit 1
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -579,6 +560,7 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
+    restart: unless-stopped
     networks:
       brunswick:
     ports:
@@ -590,9 +572,6 @@ services:
         condition: service_healthy
       prowlarr:
         condition: service_healthy
-    healthcheck:
-      test: curl -f http://localhost:8989/api/v3/health?apikey=$SONARR_API_KEY || exit 1
-    restart: unless-stopped
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -644,8 +623,6 @@ services:
     ports:
       - 8265:8265
       - 8266:8266
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:8265/ || exit 1
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -700,12 +677,6 @@ services:
   plex:
     image: plexinc/pms-docker:latest
     container_name: plex
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 60s
-      retries: 5
-      start_period: 20s
-      timeout: 10s
     restart: unless-stopped
     networks:
       brunswick:
@@ -766,12 +737,6 @@ services:
   tautulli:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     networks:
       brunswick:
@@ -821,12 +786,6 @@ services:
   overseerr:
     image: lscr.io/linuxserver/overseerr:latest
     container_name: overseerr
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     networks:
       brunswick:
@@ -901,12 +860,6 @@ services:
   calibre:
     image: lscr.io/linuxserver/calibre:latest
     container_name: calibre
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
@@ -954,12 +907,6 @@ services:
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     networks:
       brunswick:
@@ -1173,12 +1120,6 @@ services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
-    healthcheck:
-      test: curl --fail https://cloudflare.com:443 || exit 1
-      interval: 40s
-      timeout: 30s
-      retries: 3
-      start_period: 60s
     restart: unless-stopped
     networks:
       brunswick:
