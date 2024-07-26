@@ -29,13 +29,13 @@ services:
     ports:
       - 89:80
       - 449:443
-      - 8089:8080 #Web UI (enabled by --api.insecure=true)
+      # - 8089:8080 #Web UI (enabled by --api.insecure=true)
     command: # CLI arguments
       - --global.checkNewVersion=true
       - --global.sendAnonymousUsage=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      - --entrypoints.traefik.address=:8080
+      # - --entrypoints.traefik.address=:8080
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
@@ -65,7 +65,7 @@ services:
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
-      - --providers.docker.exposedByDefault=false
+      - --providers.docker.exposedByDefault=true
       - --providers.docker.network=brunswick 
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.websecure.http.tls.options=tls-opts@file
@@ -96,9 +96,6 @@ services:
     secrets:
       - cf_dns_api_token
     labels:
-      - traefik.enable=true
-      ## Log viewer
-      # - dozzle
       # HTTP Routers
       - traefik.http.routers.traefik-rtr.entrypoints=websecure
       - traefik.http.routers.traefik-rtr.rule=Host(`traefik.$DOMAINNAME`)
@@ -111,6 +108,8 @@ services:
       # - "traefik.http.routers.traefik-rtr.middlewares=chain-no-auth@file" # For No Authentication
       # - "traefik.http.routers.traefik-rtr.middlewares=chain-basic-auth@file" # For Basic HTTP Authentication
       - traefik.http.routers.traefik-rtr.middlewares=chain-oauth@file # For Google OAuth
+      ## Log viewer
+      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -143,7 +142,6 @@ services:
       - DEFAULT_ACTION=auth
       - DEFAULT_PROVIDER=google
     labels:
-      - traefik.enable=true
       # HTTP Routers
       - traefik.http.routers.oauth-rtr.entrypoints=websecure
       - traefik.http.routers.oauth-rtr.rule=Host(`oauth.$DOMAINNAME`)
@@ -212,9 +210,6 @@ services:
     volumes:
       - ${APPDIR}/gluetun:/gluetun
     labels:
-      - traefik.enable=true
-      ## Log viewer
-      - dozzle
       # HTTP Routers
       - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
       - traefik.http.routers.gluetun-qbittorrent-rtr.rule=Host(`qbittorrent.$DOMAINNAME`) # qBittorrent
@@ -229,6 +224,8 @@ services:
       - homepage.icon=gluetun.png
       - homepage.widget.type=gluetun
       - homepage.widget.url=http://gluetun:8000
+      ## Log viewer
+      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -274,7 +271,6 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.homepage-rtr.entrypoints=websecure
       - traefik.http.routers.homepage-rtr.rule=Host(`$DOMAINNAME`)
@@ -312,7 +308,6 @@ services:
       - ${DATADIR}/torrents:/data/torrents:rw
       - ${DATADIR}/usenet:/data/usenet:rw
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-rtr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
@@ -355,7 +350,6 @@ services:
       - ${APPDIR}/sabnzbd:/config
       - ${DATADIR}/usenet:/data/usenet:rw
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-rtr-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
@@ -443,7 +437,6 @@ services:
       - ${APPDIR}/qbittorrent/:/qbittorrent/:ro
       - ${DATADIR}/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
-      # - traefik.enable=true
       ## Log viewer
       # - dozzle
       ## Updating and notifications
@@ -471,7 +464,6 @@ services:
     volumes:
       - ${APPDIR}/autobrr:/config
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.autobrr-rtr.entrypoints=websecure
       - traefik.http.routers.autobrr-rtr.rule=Host(`autobrr.$DOMAINNAME`)
@@ -540,7 +532,6 @@ services:
       - ${APPDIR}/radarr:/config
       - ${DATADIR}:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-rtr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
@@ -597,7 +588,6 @@ services:
       - ${APPDIR}/sonarr:/config
       - ${DATADIR}:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-rtr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-rtr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
@@ -663,7 +653,6 @@ services:
       - ${DATADIR}/media/Transcode:/temp
       - ${DATADIR}:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.tdarr-rtr.entrypoints=websecure
       - traefik.http.routers.tdarr-rtr.rule=Host(`tdarr.$DOMAINNAME`)
@@ -698,14 +687,7 @@ services:
     networks:
       brunswick:
     ports:
-      - 32400:32400/tcp
-      - 8324:8324/tcp
-      - 32469:32469/tcp
-      - 1900:1900/udp
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
+      - 32400:32400
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -721,7 +703,6 @@ services:
       - ${DATADIR}/media:/data/media
       - ${DATADIR}/media:/transcode
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.plex-rtr.entrypoints=websecure
       - traefik.http.routers.plex-rtr.rule=Host(`plex.$DOMAINNAME`)
@@ -769,7 +750,6 @@ services:
       - ${APPDIR}/tautulli:/config:rw
       - ${APPDIR}/plex:/plex:ro
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.tautulli-rtr.entrypoints=websecure
       - traefik.http.routers.tautulli-rtr.rule=Host(`tautulli.$DOMAINNAME`)
@@ -816,7 +796,6 @@ services:
       - ${APPDIR}/overseerr:/config
       - ${DATADIR}/media:/data/media
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.overseerr-rtr.entrypoints=websecure
       - traefik.http.routers.overseerr-rtr.rule=Host(`overseerr.$DOMAINNAME`)
@@ -855,7 +834,6 @@ services:
       - ${DATADIR}/media/youtube:/downloads
       - ${DATADIR}/media/youtube/cookies:/cookies
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.metube-rtr.entrypoints=websecure
       - traefik.http.routers.metube-rtr.rule=Host(`metube.$DOMAINNAME`)
@@ -903,7 +881,6 @@ services:
       - ${APPDIR}/calibre/cache:/cache
       - ${DATADIR}:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.calibre-rtr.entrypoints=websecure
       - traefik.http.routers.calibre-rtr.rule=Host(`calibre.$DOMAINNAME`)
@@ -944,7 +921,6 @@ services:
       - ${APPDIR}/calibreweb:/config
       - ${DATADIR}:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth Bypass
       - traefik.http.routers.calibreopds-rtr.entrypoints=websecure
       - traefik.http.routers.calibreopds-rtr.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
@@ -984,7 +960,6 @@ services:
       - ${APPDIR}/prometheus/data:/prometheus
       - ${APPDIR}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
@@ -1039,7 +1014,6 @@ services:
       - GF_SMTP_USER=${SMTP_USER}
       - GF_SMTP_PASSWORD=${SMTP_PASS}
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAINNAME}`)
@@ -1071,7 +1045,7 @@ services:
     labels:
       ## Log viewer
       - dozzle
-
+      
   # Dozzle - Real-time Docker Log Viewer
   dozzle:
     image: amir20/dozzle
@@ -1092,7 +1066,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.dozzle-rtr.entrypoints=websecure
       - traefik.http.routers.dozzle-rtr.rule=Host(`dozzle.$DOMAINNAME`)
@@ -1128,7 +1101,6 @@ services:
     volumes:
       - ${APPDIR}/notifiarr:/config
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.notifiarr-rtr.entrypoints=websecure
       - traefik.http.routers.notifiarr-rtr.rule=Host(`notifiarr.$DOMAINNAME`)
@@ -1174,7 +1146,6 @@ services:
     volumes:
       - ${APPDIR}/vaultwarden:/data
     labels:
-      - traefik.enable=true
       # HTTP Routers Auth
       - traefik.http.routers.vaultwarden-rtr.entrypoints=websecure
       - traefik.http.routers.vaultwarden-rtr.rule=Host(`vaultwarden.$DOMAINNAME`)
