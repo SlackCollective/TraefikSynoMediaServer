@@ -1066,7 +1066,9 @@ services:
     network_mode: "none"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      
+    environment:
+      - TZ=${TZ}
+
   # Dozzle - Real-time Docker Log Viewer
   dozzle:
     image: amir20/dozzle
