@@ -150,6 +150,8 @@ services:
       # HTTP Services
       - traefik.http.routers.oauth-rtr.service=oauth-svc
       - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   # Cloudflare DDNS - Dynamic DNS Updater
   cf-ddns:
@@ -177,6 +179,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   # Gluetun - provider-agnostic VPN client
   gluetun:
@@ -230,6 +234,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   # tcsaver - SSL cert exporter
   tcsaver:
@@ -246,6 +252,9 @@ services:
       - ${DOCKERDIR}/certs/acme.json:/acme.json
       - ${DOCKERDIR}/certs/exports/certs:/certs
       - ${DOCKERDIR}/certs/exports/private:/private
+    labels:
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   ############################# HOMEPAGE
   # Homepage - A dashboard for your server
@@ -281,7 +290,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+      
   ############################# INDEXERS
   # Prowlarr - Hydra and Jackett combined
   prowlarr:
@@ -440,7 +451,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-        
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
   # autobrr - torrent RSS downloader
   autobrr:
     image: ghcr.io/autobrr/autobrr:latest
@@ -474,6 +487,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   # omegabrr - auto-generate filters for autobrr based on *arr subscriptions
   omegabrr:
@@ -497,7 +512,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
   ############################# MEDIA SEARCH/INDEX
   # Radarr - Movies
   radarr:
@@ -854,7 +871,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
   ############################# BOOK LIBRARY MANAGEMENT
   # Calibre – Content server
   calibre:
@@ -981,7 +1000,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
   # grafana - log visualiser
   grafana:
     image: grafana/grafana-oss:latest
@@ -1034,6 +1055,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   # deunhealth - Restart unhealthy containers, e.g. containers depending on VPN
   deunhealth:
@@ -1080,7 +1103,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
-      
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
+
   # Notifiarr - update ARR profiles
   notifiarr:
     image: golift/notifiarr:latest
@@ -1114,6 +1139,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
+      ## Restart unhealthy container
+      - deunhealth.restart.on.unhealthy=true
 
   ############################# SECURITY/PASSWORD MANAGEMENT
   # Vaultwarden - Locally-hosted Bitwarden
