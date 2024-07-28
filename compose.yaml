@@ -7,7 +7,7 @@ networks:
     enable_ipv6: false
     driver_opts:
       parent: eth0
-          
+
 ########################### SECRETS
 secrets:
   cf_dns_api_token:
@@ -182,9 +182,11 @@ services:
 
   # Gluetun - provider-agnostic VPN client
   gluetun:
-    image: qmcgaw/gluetun
+    image: qmcgaw/gluetun:v3.38
     container_name: gluetun
-    restart: always
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
     networks:
       brunswick:
     ports:
@@ -192,10 +194,7 @@ services:
       - 9997:8080 # qBittorrent WebUI
       - 3996:3996 # qBittorrent seeding port
       - 3996:3996/udp # qBittorrent seeding port
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
+      - 51820:51820 # Wireguard
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -205,16 +204,15 @@ services:
       - VPN_INTERFACE=tun0
       - FIREWALL_OUTBOUND_SUBNETS=${INTERNAL} #needed for *Arr connections
       - FIREWALL_VPN_INPUT_PORTS=${VPN_PORT} #uncomment/edit if your provider offers port fwd
-      # - HTTPPROXY=off #change to on if you wish to enable
-      # - SHADOWSOCKS=off #change to on if you wish to enable
     volumes:
       - ${APPDIR}/gluetun:/gluetun
+      - ${APPDIR}/gluetun/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf
     labels:
       # HTTP Routers
       - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
       - traefik.http.routers.gluetun-qbittorrent-rtr.rule=Host(`qbittorrent.$DOMAINNAME`) # qBittorrent
       # Middlewares
-      - traefik.http.routers.gluetun-qbittorrent-rtr.middlewares=chain-oauth@file # qBittorrent
+      - traefik.http.routers.gluetun-qbittorrent-rtr.middlewares=chain-no-at@file # qBittorrent
       # HTTP Services
       - traefik.http.routers.gluetun-qbittorrent-rtr.service=gluetun-svc # qBittorrent
       - traefik.http.services.gluetun-svc.loadbalancer.server.port=8080 # qBittorrent
@@ -232,7 +230,7 @@ services:
       - org.hotio.pullio.discord.webhook=${DISCORD}
       - org.hotio.pullio.generic.webhook=${PULLIO}
       ## Restart unhealthy container
-      - deunhealth.restart.on.unhealthy=true
+      # - deunhealth.restart.on.unhealthy=true
 
   # tcsaver - SSL cert exporter
   tcsaver:
@@ -383,15 +381,10 @@ services:
 
   # qbittorrent - torrent downloader with VPN
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:libtorrentv1
     container_name: qbittorrent
-    restart: always 
+    restart: unless-stopped 
     network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_started
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -419,7 +412,7 @@ services:
       - homepage.widget.username=$ORGNAME
       - homepage.widget.password=$ORGPASS
       ## Restart unhealthy container
-      - deunhealth.restart.on.unhealthy=true
+      # - deunhealth.restart.on.unhealthy=true
       
   # qbit_manage - torrent client management
   qbit_manage:
