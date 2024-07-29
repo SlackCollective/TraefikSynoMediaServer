@@ -187,10 +187,12 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     networks:
       brunswick:
     ports:
-      - 8000:8000 # http control server
+      - 8000:8000/tcp # http control server
       - 9997:8080 # qBittorrent WebUI
       - 3996:3996 # qBittorrent seeding port
       - 3996:3996/udp # qBittorrent seeding port
