@@ -194,20 +194,21 @@ services:
     ports:
       - 8000:8000/tcp # http control server
       - 9997:8080 # qBittorrent WebUI
-      - 3996:3996 # qBittorrent seeding port
-      - 3996:3996/udp # qBittorrent seeding port
+      - 51007:51007 # qBittorrent seeding port
+      - 51007:51007/udp # qBittorrent seeding port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - VPN_SERVICE_PROVIDER=custom
+      - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - VPN_INTERFACE=tun0
+      - WIREGUARD_PRIVATE_KEY=${WG_PRIVATE}
+      - WIREGUARD_ADDRESSES=${WG_ADDRESSES}
+      - WIREGUARD_PUBLIC_KEY=${WG_PUBLIC}
+      - WIREGUARD_PRESHARED_KEY=${WG_PSK}
+      - SERVER_COUNTRIES=Netherlands
       - FIREWALL_OUTBOUND_SUBNETS=${INTERNAL} #needed for *Arr connections
-      - FIREWALL_VPN_INPUT_PORTS=${VPN_PORT} #uncomment/edit if your provider offers port fwd
-    volumes:
-      - ${APPDIR}/gluetun:/gluetun
-      - ${APPDIR}/gluetun/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf
+      - FIREWALL_VPN_INPUT_PORTS=${WG_PORT} #uncomment/edit if your provider offers port fwd
     labels:
       # HTTP Routers
       - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
@@ -390,7 +391,8 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      # - WEBUI_PORT=9997
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=51007
     volumes:
       - ${APPDIR}/qbittorrent:/config:rw
       - ${DATADIR}/torrents:/data/torrents:rw
