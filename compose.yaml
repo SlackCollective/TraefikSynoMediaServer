@@ -159,11 +159,11 @@ services:
     networks:
       brunswick:
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - API_KEY=${CF_API_KEY}
-      - ZONE=${DOMAINNAME}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - API_KEY=$CF_API_KEY
+      - ZONE=$DOMAINNAME
       - PROXIED=false
       - RRTYPE=A
       - DELETE_ON_STOP=false
@@ -175,8 +175,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -197,18 +197,18 @@ services:
       - 51007:51007 # qBittorrent seeding port
       - 51007:51007/udp # qBittorrent seeding port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY=${WG_PRIVATE}
-      - WIREGUARD_ADDRESSES=${WG_ADDRESSES}
-      - WIREGUARD_PUBLIC_KEY=${WG_PUBLIC}
-      - WIREGUARD_PRESHARED_KEY=${WG_PSK}
+      - WIREGUARD_PRIVATE_KEY=$WG_PRIVATE
+      - WIREGUARD_ADDRESSES=$WG_ADDRESSES
+      - WIREGUARD_PUBLIC_KEY=$WG_PUBLIC
+      - WIREGUARD_PRESHARED_KEY=$WG_PSK
       - SERVER_COUNTRIES=Netherlands
-      - FIREWALL_OUTBOUND_SUBNETS=${INTERNAL} #needed for *Arr connections
-      - FIREWALL_VPN_INPUT_PORTS=${WG_PORT} #uncomment/edit if your provider offers port fwd
+      - FIREWALL_OUTBOUND_SUBNETS=$INTERNAL #needed for *Arr connections
+      - FIREWALL_VPN_INPUT_PORTS=$WG_PORT #uncomment/edit if your provider offers port fwd
     labels:
       # HTTP Routers
       - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
@@ -229,8 +229,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       # - deunhealth.restart.on.unhealthy=true
 
@@ -245,10 +245,10 @@ services:
       - TCSAVER_CERT_EXTENSION=.crt
       - TCSAVER_KEY_EXTENSION=.key
     volumes:
-      - ${APPDIR}/tcsaver/config.yaml:/config.yaml
-      - ${DOCKERDIR}/certs/acme.json:/acme.json
-      - ${DOCKERDIR}/certs/exports/certs:/certs
-      - ${DOCKERDIR}/certs/exports/private:/private
+      - $APPDIR/tcsaver/config.yaml:/config.yaml
+      - $DOCKERDIR/certs/acme.json:/acme.json
+      - $DOCKERDIR/certs/exports/certs:/certs
+      - $DOCKERDIR/certs/exports/private:/private
     labels:
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
@@ -264,12 +264,12 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - ${APPDIR}/homepage:/app/config # Make sure your local config directory exists
+      - $APPDIR/homepage:/app/config # Make sure your local config directory exists
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.homepage-rtr.entrypoints=websecure
@@ -284,8 +284,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -300,13 +300,13 @@ services:
       - 9696:9696
     restart: unless-stopped
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/prowlarr:/config:rw
-      - ${DATADIR}/torrents:/data/torrents:rw
-      - ${DATADIR}/usenet:/data/usenet:rw
+      - $APPDIR/prowlarr:/config:rw
+      - $DATADIR/torrents:/data/torrents:rw
+      - $DATADIR/usenet:/data/usenet:rw
     labels:
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-rtr-bypass.entrypoints=websecure
@@ -326,8 +326,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -342,13 +342,13 @@ services:
       - 9998:8080
     restart: unless-stopped
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - HAS_IPV6=false
     volumes:
-      - ${APPDIR}/sabnzbd:/config
-      - ${DATADIR}/usenet:/data/usenet:rw
+      - $APPDIR/sabnzbd:/config
+      - $DATADIR/usenet:/data/usenet:rw
     labels:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-rtr-bypass.entrypoints=websecure
@@ -368,8 +368,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=Sourcing
       - homepage.name=Sabnzbd
@@ -388,23 +388,23 @@ services:
     restart: unless-stopped 
     network_mode: "service:gluetun"
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - WEBUI_PORT=8080
       - TORRENTING_PORT=51007
     volumes:
-      - ${APPDIR}/qbittorrent:/config:rw
-      - ${DATADIR}/torrents:/data/torrents:rw
-      - ${APPDIR}/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
+      - $APPDIR/qbittorrent:/config:rw
+      - $DATADIR/torrents:/data/torrents:rw
+      - $APPDIR/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
     labels:
       ## Log viewer
       - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=Sourcing
       - homepage.name=qBittorrent
@@ -425,21 +425,21 @@ services:
     networks:
       brunswick:
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/qbitmanage:/config:rw
-      - ${APPDIR}/qbittorrent/:/qbittorrent/:ro
-      - ${DATADIR}/torrents:/data/torrents:rw # same as qbittorrent download dir
+      - $APPDIR/qbitmanage:/config:rw
+      - $APPDIR/qbittorrent/:/qbittorrent/:ro
+      - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
       ## Log viewer
       # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -454,11 +454,11 @@ services:
       - 7474:7474
     user: 1031:65539
     environment:
-      - TZ=${TZ}
+      - TZ=$TZ
       - AUTOBRR_PORT=7474
       - AUTOBRR_HOST=0.0.0.0
     volumes:
-      - ${APPDIR}/autobrr:/config
+      - $APPDIR/autobrr:/config
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.autobrr-rtr.entrypoints=websecure
@@ -473,8 +473,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -487,19 +487,19 @@ services:
       brunswick:
     ports:
       - 7441:7441
-    user: ${PUID}:${PGID}
+    user: $PUID:$PGID
     environment:
-      - TZ=${TZ}
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/omegabrr:/config
+      - $APPDIR/omegabrr:/config
     labels:
       ## Log viewer
       # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -521,12 +521,12 @@ services:
       prowlarr:
         condition: service_started
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/radarr:/config
-      - ${DATADIR}:/data
+      - $APPDIR/radarr:/config
+      - $DATADIR:/data
     labels:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-rtr-bypass.entrypoints=websecure
@@ -546,8 +546,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=PVR
       - homepage.name=Radarr
@@ -577,12 +577,12 @@ services:
       prowlarr:
         condition: service_started
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/sonarr:/config
-      - ${DATADIR}:/data
+      - $APPDIR/sonarr:/config
+      - $DATADIR:/data
     labels:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-rtr-bypass.entrypoints=websecure
@@ -602,8 +602,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=PVR
       - homepage.name=Sonarr
@@ -629,9 +629,9 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - serverIP=0.0.0.0
       - serverPort=8266
       - webUIPort=8265
@@ -643,11 +643,11 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
-      - ${APPDIR}:/app/server
-      - ${APPDIR}/Tdarr/Configs:/app/configs
-      - ${APPDIR}/Tdarr/Logs:/app/logs
-      - ${DATADIR}/media/Transcode:/temp
-      - ${DATADIR}:/data
+      - $APPDIR:/app/server
+      - $APPDIR/Tdarr/Configs:/app/configs
+      - $APPDIR/Tdarr/Logs:/app/logs
+      - $DATADIR/media/Transcode:/temp
+      - $DATADIR:/data
     labels:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.tdarr-rtr-bypass.entrypoints=websecure
@@ -667,8 +667,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=Management
       - homepage.name=Tdarr
@@ -692,17 +692,17 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
-      - PLEX_UID=${PUID}
-      - PLEX_GID=${PGID}
-      - TZ=${TZ}
+      - PLEX_UID=$PUID
+      - PLEX_GID=$PGID
+      - TZ=$TZ
       - HOSTNAME=BrunswickMedia
-      # - PLEX_CLAIM=${$PLEX_TOKEN} #only for initial setup
-      - ADVERTISE_IP=${ADVERTISEPLEX}
+      # - PLEX_CLAIM=$PLEX_TOKEN #only for initial setup
+      - ADVERTISE_IP=$ADVERTISEPLEX
       - ALLOWED_NETWORKS=172.28.6.0/24,192.168.1.0/24
     volumes:
-      - ${APPDIR}/plex:/config
-      - ${DATADIR}/media:/data/media
-      - ${DATADIR}/media:/transcode
+      - $APPDIR/plex:/config
+      - $DATADIR/media:/data/media
+      - $DATADIR/media:/transcode
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.plex-rtr.entrypoints=websecure
@@ -717,8 +717,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=Theatre
       - homepage.name=Plex
@@ -742,14 +742,14 @@ services:
     ports:
       - 8182:8181
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       # - ARGS=
       - DEBUG=no
     volumes:
-      - ${APPDIR}/tautulli:/config:rw
-      - ${APPDIR}/plex:/plex:ro
+      - $APPDIR/tautulli:/config:rw
+      - $APPDIR/plex:/plex:ro
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.tautulli-rtr.entrypoints=websecure
@@ -764,8 +764,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Homepage integration and widgets
       - homepage.group=Theatre
       - homepage.name=Tautulli
@@ -790,12 +790,12 @@ services:
     ports:
       - 5055:5055
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${APPDIR}/overseerr:/config
-      - ${DATADIR}/media:/data/media
+      - $APPDIR/overseerr:/config
+      - $DATADIR/media:/data/media
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.overseerr-rtr.entrypoints=websecure
@@ -810,8 +810,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
       
@@ -826,14 +826,14 @@ services:
     ports:
       - 8084:8081
     environment:
-      - UID=${PUID}
-      - GID=${PGID}
-      - TZ=${TZ}
+      - UID=$PUID
+      - GID=$PGID
+      - TZ=$TZ
       - DELETE_FILE_ON_TRASHCAN=true
-      - OUTPUT_TEMPLATE=%(playlist_title&Playlist |)S%(playlist_title|)S%(playlist_uploader& by |)S%(playlist_uploader|)S%(playlist_autonumber& - |)S%(playlist_autonumber|)S%(playlist_count& of |)S%(playlist_count|)S%(playlist_autonumber& - |)S%(uploader,creator|UNKNOWN_AUTHOR)S - %(title|UNKNOWN_TITLE)S - %(release_date>%Y-%m-%d,upload_date>%Y-%m-%d|UNKNOWN_DATE)S.%(ext)s
+      - OUTPUT_TEMPLATE=$METUBE
     volumes:
-      - ${DATADIR}/media/youtube:/downloads
-      - ${DATADIR}/media/youtube/cookies:/cookies
+      - $DATADIR/media/youtube:/downloads
+      - $DATADIR/media/youtube/cookies:/cookies
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.metube-rtr.entrypoints=websecure
@@ -848,8 +848,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -870,17 +870,17 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - TITLE=BrunswickBooks
       - CALIBRE_CACHE_DIRECTORY=/cache
       - CLI_ARGS="--trusted-ips 192.168.0.0/16"
       - DRINODE=/dev/dri/renderD128
     volumes:
-      - ${APPDIR}/calibre:/config
-      - ${APPDIR}/calibre/cache:/cache
-      - ${DATADIR}:/data
+      - $APPDIR/calibre:/config
+      - $APPDIR/calibre/cache:/cache
+      - $DATADIR:/data
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.calibre-rtr.entrypoints=websecure
@@ -895,8 +895,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -912,15 +912,15 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - DOCKER_MODS=linuxserver/mods:universal-calibre
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure
     volumes:
-      - ${APPDIR}/calibreweb:/config
-      - ${DATADIR}:/data
+      - $APPDIR/calibreweb:/config
+      - $DATADIR:/data
     labels:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.calibreopds-rtr.entrypoints=websecure
@@ -940,8 +940,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -958,8 +958,8 @@ services:
     ports:
       - 9090:9090
     volumes:
-      - ${APPDIR}/prometheus/data:/prometheus
-      - ${APPDIR}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - $APPDIR/prometheus/data:/prometheus
+      - $APPDIR/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.prometheus.entrypoints=websecure
@@ -974,8 +974,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -992,10 +992,10 @@ services:
     ports:
       - 3160:3160
     volumes:
-      - ${APPDIR}/grafana:/var/lib/grafana
+      - $APPDIR/grafana:/var/lib/grafana
     environment:
-      - GF_SERVER_DOMAIN=${DOMAINNAME}
-      - GF_SERVER_ROOT_URL=https://grafana.${DOMAINNAME}
+      - GF_SERVER_DOMAIN=$DOMAINNAME
+      - GF_SERVER_ROOT_URL=https://grafana.$DOMAINNAME
       - GF_SERVER_HTTP_ADDRESS=0.0.0.0
       - GF_SERVER_HTTP_PORT=3160
       - GF_USERS_ALLOW_SIGN_UP=false
@@ -1005,19 +1005,19 @@ services:
       - GF_AUTH_DISABLE_SIGNOUT_MENU=true
       - GF_AUTH_SKIP_ORG_ROLE_SYNC=true
       - GF_AUTH_GOOGLE_ENABLED=true
-      - GF_AUTH_GOOGLE_CLIENT_ID=${GOOGLEID}
-      - GF_AUTH_GOOGLE_CLIENT_SECRET=${GOOGLESECRET}
+      - GF_AUTH_GOOGLE_CLIENT_ID=$GOOGLEID
+      - GF_AUTH_GOOGLE_CLIENT_SECRET=$GOOGLESECRET
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${ORGPASS}
+      - GF_SECURITY_ADMIN_PASSWORD=$ORGPASS
       - GF_SECURITY_COOKIE_SECURE=true
       - GF_SMTP_ENABLED=true
       - GF_SMTP_HOST=smtp.gmail.com:465
-      - GF_SMTP_USER=${SMTP_USER}
-      - GF_SMTP_PASSWORD=${SMTP_PASS}
+      - GF_SMTP_USER=$SMTP_USER
+      - GF_SMTP_PASSWORD=$SMTP_PASS
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.grafana.entrypoints=websecure
-      - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAINNAME}`)
+      - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.grafana.middlewares=chain-oauth@file
       # HTTP Services
@@ -1028,8 +1028,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -1042,7 +1042,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - TZ=${TZ}
+      - TZ=$TZ
     labels:
       ## Log viewer
       - dozzle
@@ -1057,9 +1057,9 @@ services:
     ports:
       - 9999:8080
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
       - DOZZLE_BASE=/
       - DOZZLE_LEVEL=error
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
@@ -1080,8 +1080,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -1096,11 +1096,11 @@ services:
     ports:
       - 5454:5454
     environment:
-      - TZ=${TZ}
-      - DN_API_KEY=${NOTIFIARR}
+      - TZ=$TZ
+      - DN_API_KEY=$NOTIFIARR
       - USER=docker
     volumes:
-      - ${APPDIR}/notifiarr:/config
+      - $APPDIR/notifiarr:/config
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.notifiarr-rtr.entrypoints=websecure
@@ -1115,8 +1115,8 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
 
@@ -1129,23 +1129,23 @@ services:
     networks:
       brunswick:
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - DOMAIN=https://vaultwarden.${DOMAINNAME}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - DOMAIN=https://vaultwarden.$DOMAINNAME
       - PUSH_ENABLED=true
-      - PUSH_INSTALLATION_ID=${PUSH_INSTALLATION_ID}
-      - PUSH_INSTALLATION_KEY=${PUSH_INSTALLATION_KEY}
+      - PUSH_INSTALLATION_ID=$PUSH_INSTALLATION_ID
+      - PUSH_INSTALLATION_KEY=$PUSH_INSTALLATION_KEY
       - LOG_LEVEL=error
       - EXTENDED_LOGGING=false
       - SMTP_HOST=smtp.gmail.com
-      - SMTP_FROM=vaultwarden@${DOMAINNAME}
+      - SMTP_FROM=vaultwarden@$DOMAINNAME
       - SMTP_PORT=587
       - SMTP_SECURITY=starttls
-      - SMTP_USERNAME=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASS}
+      - SMTP_USERNAME=$SMTP_USER
+      - SMTP_PASSWORD=$SMTP_PASS
     volumes:
-      - ${APPDIR}/vaultwarden:/data
+      - $APPDIR/vaultwarden:/data
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.vaultwarden-rtr.entrypoints=websecure
@@ -1160,7 +1160,7 @@ services:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=${DISCORD}
-      - org.hotio.pullio.generic.webhook=${PULLIO}
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       ## Restart unhealthy container
       - deunhealth.restart.on.unhealthy=true
