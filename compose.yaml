@@ -457,6 +457,10 @@ services:
       - TZ=$TZ
       - AUTOBRR_PORT=7474
       - AUTOBRR_HOST=0.0.0.0
+      - AUTOBRR_BASE_URL=autobrr.$DOMAINNAME
+      - AUTOBRR_LOG_LEVEL=error
+      - AUTOBRR_LOG_MAX_SIZE=5
+      - AUTOBRR_LOG_MAX_BACKUPS=3
     volumes:
       - $APPDIR/autobrr:/config
     labels:
@@ -696,9 +700,9 @@ services:
       - PLEX_GID=$PGID
       - TZ=$TZ
       - HOSTNAME=BrunswickMedia
-      # - PLEX_CLAIM=$PLEX_TOKEN #only for initial setup
       - ADVERTISE_IP=$ADVERTISEPLEX
-      - ALLOWED_NETWORKS=172.28.6.0/24,192.168.1.0/24
+      # - PLEX_CLAIM=$CLAIM #only for initial setup
+      # - ALLOWED_NETWORKS=172.28.6.0/24,192.168.1.0/24
     volumes:
       - $APPDIR/plex:/config
       - $DATADIR/media:/data/media
