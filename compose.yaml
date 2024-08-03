@@ -590,6 +590,65 @@ services:
       - homepage.widget.url=http://sonarr:8989
       - homepage.widget.key=$SONARR_API_KEY
       - homepage.widget.enableQueue=false
+
+  # Bazarr – Subtitle Management
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    hostname: bazarr
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 6767:6767
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - $APPDIR/bazarr:/config
+      - $DATADIR/media:/data/media
+    labels:
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.bazarr-rtr-bypass.entrypoints=websecure
+      - traefik.http.routers.bazarr-rtr-bypass.rule=Host(`bazarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$BAZARR_API_KEY`) || Query(`apikey`, `$BAZARR_API_KEY`))
+      # HTTP Routers Auth
+      - traefik.http.routers.bazarr-rtr.entrypoints=websecure
+      - traefik.http.routers.bazarr-rtr.rule=Host(`bazarr.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.bazarr-rtr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.bazarr-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.bazarr-rtr.service=bazarr-svc
+      - traefik.http.routers.bazarr-rtr-bypass.service=bazarr-svc
+      - traefik.http.services.bazarr-svc.loadbalancer.server.port=6767
+      ## Log viewer
+      - dozzle
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=${DISCORD}
+      - org.hotio.pullio.generic.webhook=${PULLIO}
+
+  # Subgen - AI subtitle provider via Whisper
+  subgen:
+    image: mccloud/subgen:latest
+    container_name: subgen
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 9000:9000
+    volumes:
+      - $DATADIR/media:/data/media
+      - $APPDIR/subgen:/subgen/models
+    labels:
+      ## Log viewer
+      - dozzle
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
       
   # Tdarr - Video conversion
   tdarr:
