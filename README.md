@@ -31,6 +31,9 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### MEDIA SEARCH
 * sonarr
 * radarr
+### METADATA
+* bazarr (subtitle management)
+* subget (AI-generated subtitles from audio)
 ### VIDEO CONVERSION
 * tdarr
 ### HOME THEATRE
