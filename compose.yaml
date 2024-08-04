@@ -860,6 +860,8 @@ services:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
     restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
     networks:
       brunswick:
     ports:
