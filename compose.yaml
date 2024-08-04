@@ -646,28 +646,22 @@ services:
       
   ############################# HOME THEATRE
   # Plex - Media Player
-  plex:
-    image: plexinc/pms-docker:latest
+  plex:  
+    image: lscr.io/linuxserver/plex:latest
     container_name: plex
     restart: unless-stopped
-    networks:
-      brunswick:
-    ports:
-      - 32400:32400
-    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
+    network_mode: "host"
+    devices:
       - /dev/dri:/dev/dri
     environment:
-      - PLEX_UID=$PUID
-      - PLEX_GID=$PGID
-      - TZ=$TZ
-      - HOSTNAME=BrunswickMedia
-      - ADVERTISE_IP=$ADVERTISEPLEX
-      # - PLEX_CLAIM=$CLAIM #only for initial setup
-      # - ALLOWED_NETWORKS=172.28.6.0/24,192.168.1.0/24
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VERSION=docker
+      # - PLEX_CLAIM= #only needed when first claiming server
     volumes:
-      - $APPDIR/plex:/config
-      - $DATADIR/media:/data/media
-      - $DATADIR/media:/transcode
+      - ${APPDIR}/plex:/config:rw
+      - ${DATADIR}/media:/data/media:rw
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.plex-rtr.entrypoints=websecure
@@ -690,7 +684,7 @@ services:
       - homepage.icon=plex.png
       - homepage.href=https://plex.$DOMAINNAME
       - homepage.widget.type=plex
-      - homepage.widget.url=http://plex:32400
+      - homepage.widget.url=http://172.28.6.254:32400
       - homepage.widget.key=$PLEX_TOKEN
       - homepage.widget.fields=["streams", "movies", "tv"]
 
