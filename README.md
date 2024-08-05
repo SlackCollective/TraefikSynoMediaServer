@@ -13,7 +13,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### WEBSERVER/REVERSE PROXY/DNS/VPN
 * traefik
 * cloudflare-ddns
-* gluetun (vpn, for qbittorrent)
 * tcsaver (export acme.json to certs)
 ### AUTH
 * Google oauth
@@ -23,7 +22,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * prowlarr
 ### DOWNLOADERS
 * sabnzbd
-* qbittorrent
+* qbittorrent (hotio, with vpn support)
 ### TORRENT MANAGEMENT
 * qbit-manage
 * autobrr
