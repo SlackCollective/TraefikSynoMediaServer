@@ -166,58 +166,6 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # Gluetun - provider-agnostic VPN client
-  gluetun:
-    image: qmcgaw/gluetun:v3.38
-    container_name: gluetun
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    networks:
-      brunswick:
-    ports:
-      - 8000:8000/tcp # http control server
-      - 9997:8080 # qBittorrent WebUI
-      - 51007:51007 # qBittorrent seeding port
-      - 51007:51007/udp # qBittorrent seeding port
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - VPN_SERVICE_PROVIDER=airvpn
-      - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY=$WG_PRIVATE
-      - WIREGUARD_ADDRESSES=$WG_ADDRESSES
-      - WIREGUARD_PUBLIC_KEY=$WG_PUBLIC
-      - WIREGUARD_PRESHARED_KEY=$WG_PSK
-      - SERVER_COUNTRIES=Netherlands
-      - FIREWALL_OUTBOUND_SUBNETS=$INTERNAL #needed for *Arr connections
-      - FIREWALL_VPN_INPUT_PORTS=$WG_PORT #uncomment/edit if your provider offers port fwd
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.gluetun-qbittorrent-rtr.entrypoints=websecure
-      - traefik.http.routers.gluetun-qbittorrent-rtr.rule=Host(`qbittorrent.$DOMAINNAME`) # qBittorrent
-      # Middlewares
-      - traefik.http.routers.gluetun-qbittorrent-rtr.middlewares=chain-oauth@file # qBittorrent
-      # HTTP Services
-      - traefik.http.routers.gluetun-qbittorrent-rtr.service=gluetun-svc # qBittorrent
-      - traefik.http.services.gluetun-svc.loadbalancer.server.port=8080 # qBittorrent
-      ## Homepage integration and widgets
-      - homepage.group=Management
-      - homepage.name=Gluetun
-      - homepage.icon=gluetun.png
-      - homepage.widget.type=gluetun
-      - homepage.widget.url=http://gluetun:8000
-      ## Log viewer
-      - dozzle
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   # tcsaver - SSL cert exporter
   tcsaver:
     image: jcrummy/tcsaver:latest
@@ -358,21 +306,52 @@ services:
 
   # qbittorrent - torrent downloader with VPN
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:libtorrentv1
+    image: ghcr.io/hotio/qbittorrent:latest
     container_name: qbittorrent
-    restart: unless-stopped 
-    network_mode: "service:gluetun"
+    restart: unless-stopped
+    hostname: qbittorrent.internal
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=1
+    devices:
+      - /dev/net/tun:/dev/net/tun # OPTIONAL, READ THIS
+    networks:
+      brunswick:
+    ports:
+      - 9997:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - WEBUI_PORT=8080
-      - TORRENTING_PORT=51007
+      - WEBUI_PORTS=8080/tcp,8080/udp
+      - VPN_ENABLED=true
+      - VPN_CONF=wg0-fix
+      - VPN_PROVIDER=generic
+      - VPN_LAN_NETWORK=192.168.1.0/24
+      - VPN_LAN_LEAK_ENABLED=false
+      # - VPN_EXPOSE_PORTS_ON_LAN=
+      - VPN_AUTO_PORT_FORWARD=51007
+      # - VPN_AUTO_PORT_FORWARD_TO_PORTS=
+      - VPN_KEEP_LOCAL_DNS=false
+      - VPN_FIREWALL_TYPE=auto
+      - VPN_HEALTHCHECK_ENABLED=true
+      - PRIVOXY_ENABLED=false
+      - UNBOUND_ENABLED=false
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
       - $APPDIR/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
     labels:
+      # HTTP Routers
+      - traefik.http.routers.qbittorrent-rtr.entrypoints=websecure
+      - traefik.http.routers.qbittorrent-rtr.rule=Host(`qbittorrent.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.qbittorrent-rtr.middlewares=chain-oauth@file
+      # HTTP Services
+      - traefik.http.routers.qbittorrent-rtr.service=qbittorrent-svc
+      - traefik.http.services.qbittorrent-svc.loadbalancer.server.port=8080
       ## Log viewer
       - dozzle
       ## Updating and notifications
@@ -386,7 +365,7 @@ services:
       - homepage.icon=qbittorrent.png
       - homepage.href=https://qbittorrent.$DOMAINNAME
       - homepage.widget.type=qbittorrent
-      - homepage.widget.url=http://gluetun:8080
+      - homepage.widget.url=http://qbittorrent:8080
       - homepage.widget.username=$ORGNAME
       - homepage.widget.password=$ORGPASS
       
