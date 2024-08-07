@@ -622,7 +622,11 @@ services:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     restart: unless-stopped
-    network_mode: "host"
+    networks:
+      brunswick:
+    ports:
+      - 32400:32400
+    # network_mode: "host"
     devices:
       - /dev/dri:/dev/dri
     environment:
@@ -656,7 +660,7 @@ services:
       - homepage.icon=plex.png
       - homepage.href=https://plex.$DOMAINNAME
       - homepage.widget.type=plex
-      - homepage.widget.url=http://172.28.6.254:32400
+      - homepage.widget.url=http://plex:32400
       - homepage.widget.key=$PLEX_TOKEN
       - homepage.widget.fields=["streams", "movies", "tv"]
 
