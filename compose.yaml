@@ -634,6 +634,7 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
       - VERSION=docker
+      - ADVERTISE_IP=172.28.6.254:32400
       # - PLEX_CLAIM= #only needed when first claiming server
     volumes:
       - ${APPDIR}/plex:/config:rw
