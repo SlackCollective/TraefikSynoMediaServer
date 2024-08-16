@@ -634,6 +634,7 @@ services:
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
+      - ${DATADIR}/media:/transcode
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.plex-rtr.entrypoints=websecure
