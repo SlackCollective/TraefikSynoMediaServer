@@ -28,10 +28,10 @@ services:
       - --global.sendAnonymousUsage=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      # - --entrypoints.traefik.address=:8080
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.traefik.address=:8080
+      # - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      # - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --api=true
       - --api.dashboard=true
       - --api.insecure=false
@@ -43,7 +43,7 @@ services:
       - --log.maxSize=1
       - --log.maxAge=3
       - --log.filePath=/logs/traefik.log
-      # - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
       - --accessLog=true
       - --accessLog.filePath=/logs/access.log
       - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
@@ -115,6 +115,8 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+    ports:
+      - 4141:4141
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
@@ -133,8 +135,9 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.oauth-rtr.entrypoints=websecure
-      - traefik.http.middlewares.oauth-rtr.forwardauth.authResponseHeaders=X-Forwarded-User
       - traefik.http.routers.oauth-rtr.rule=Host(`oauth.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.middlewares.oauth-rtr.forwardauth.authResponseHeaders=X-Forwarded-User
       # HTTP Services
       - traefik.http.routers.oauth-rtr.service=oauth-svc
       - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
@@ -158,6 +161,11 @@ services:
       - DNS_SERVER=1.1.1.1
       - CRON="@daily"
     labels:
+      # HTTP Routers
+      - traefik.http.routers.cf-rtr.entrypoints=websecure
+      - traefik.http.routers.cf-rtr.service=cf-svc
+      # HTTP Services
+      - traefik.http.services.cf-svc.loadbalancer.server.port=443
       ## Log viewer
       # - dozzle
       ## Updating and notifications
@@ -181,6 +189,12 @@ services:
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $DOCKERDIR/certs/exports/certs:/certs
       - $DOCKERDIR/certs/exports/private:/private
+    labels:
+      # HTTP Routers
+      - traefik.http.routers.certsave-rtr.entrypoints=websecure
+      - traefik.http.routers.certsave-rtr.service=certsave-svc
+      # HTTP Services
+      - traefik.http.services.certsave-svc.loadbalancer.server.port=80
 
   ############################# HOMEPAGE
   # Homepage - A dashboard for your server
@@ -385,6 +399,11 @@ services:
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
       - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
+      # HTTP Routers
+      - traefik.http.routers.qbitmanage-rtr.entrypoints=websecure
+      - traefik.http.routers.qbitmanage-rtr.service=qbitmanage-svc
+      # HTTP Services
+      - traefik.http.services.qbitmanage-svc.loadbalancer.server.port=443
       ## Log viewer
       - dozzle
       ## Updating and notifications
@@ -442,6 +461,11 @@ services:
     volumes:
       - $APPDIR/omegabrr:/config
     labels:
+      # HTTP Routers
+      - traefik.http.routers.omegabrr-rtr.entrypoints=websecure
+      - traefik.http.routers.omegabrr-rtr.service=omegabrr-svc
+      # HTTP Services
+      - traefik.http.services.omegabrr-svc.loadbalancer.server.port=7441
       ## Log viewer
       - dozzle
       ## Updating and notifications
