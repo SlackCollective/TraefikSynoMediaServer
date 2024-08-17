@@ -187,35 +187,6 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # tcsaver - SSL cert exporter
-  tcsaver:
-    image: jcrummy/tcsaver:latest
-    container_name: tcsaver
-    networks:
-      brunswick:
-    environment:
-      - TCSAVER_WATCH=true
-      - TCSAVER_CERT_EXTENSION=.crt
-      - TCSAVER_KEY_EXTENSION=.key
-    volumes:
-      - $APPDIR/tcsaver/config.yaml:/config.yaml
-      - $DOCKERDIR/certs/acme.json:/acme.json
-      - $DOCKERDIR/certs/exports/certs:/certs
-      - $DOCKERDIR/certs/exports/private:/private
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.certsave.entrypoints=websecure
-      - traefik.http.routers.certsave.service=certsave
-      # HTTP Services
-      - traefik.http.services.certsave.loadbalancer.server.port=80
-      ## Log viewer
-      # - dozzle
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   ############################# HOMEPAGE
   # Homepage - A dashboard for your server
   homepage:
