@@ -13,7 +13,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### WEBSERVER/REVERSE PROXY/DNS/VPN
 * traefik
 * cloudflare-ddns
-* tcsaver (export acme.json to certs)
 ### AUTH
 * Google oauth
 ### HOMEPAGE
