@@ -24,7 +24,7 @@ services:
       - 449:443
       - 8089:8080
       - 8081:8081
-      - 8085:8082
+      # - 8085:8082
     command: # CLI arguments
       - --global.sendAnonymousUsage=true
       - --api.dashboard=true
@@ -43,8 +43,9 @@ services:
       - --entrypoints.websecure.http.tls.options=tls-opts@file
       - --entrypoints.traefik.address=:8080
       - --entrypoints.ping.address=:8081
-      - --entrypoints.metrics.address=:8082
+      # - --entrypoints.metrics.address=:8082
       # TLS
+      # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
@@ -66,15 +67,18 @@ services:
       - --log.maxAge=3
       - --log.filepath=/logs/traefik.log
       - --accesslog=true
+      - --accesslog.format=json #new
       - --accesslog.filepath=/logs/access.log
-      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      - --accessLog.bufferingSize=10 # Configuring a buffer of 10 lines
       - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      # Metrics
-      - --metrics.prometheus=true
-      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      - --metrics.prometheus.addEntryPointsLabels=true
-      - --metrics.prometheus.addServicesLabels=true
-      - --metrics.prometheus.addRoutersLabels=true
+      - --accessLog.fields.headers.defaultMode=drop
+      - --accessLog.fields.headers.names.User-Agent=keep
+      # Metrics Prometheus
+      # - --metrics.prometheus=true
+      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      # - --metrics.prometheus.addEntryPointsLabels=true
+      # - --metrics.prometheus.addServicesLabels=true
+      # - --metrics.prometheus.addRoutersLabels=true
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
@@ -93,18 +97,18 @@ services:
       - traefik.enable=true
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.ping.entrypoints=websecure
-      - traefik.http.routers.metrics.entrypoints=websecure
+      # - traefik.http.routers.metrics.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       - traefik.http.routers.ping.rule=Host(`traefik.$DOMAINNAME`) && Path(`/ping`)
-      - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
+      # - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=chain-oauth@file # For Google OAuth  
       - traefik.http.routers.ping.middlewares=chain-oauth@file # For Google OAuth  
-      - traefik.http.routers.metrics.middlewares=chain-oauth@file # For Google OAuth  
+      # - traefik.http.routers.metrics.middlewares=chain-oauth@file # For Google OAuth  
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       - traefik.http.routers.ping.service=ping@internal
-      - traefik.http.routers.metrics.service=prometheus@internal    
+      # - traefik.http.routers.metrics.service=prometheus@internal    
       ## Log viewer
       # - dozzle
       ## Updating and notifications
@@ -196,7 +200,7 @@ services:
     networks:
       brunswick:
     ports:
-      - 3000:3000
+      - 3001:3000
     volumes:
       - $APPDIR/homepage:/app/config # Make sure your local config directory exists
       - /var/run/docker.sock:/var/run/docker.sock
