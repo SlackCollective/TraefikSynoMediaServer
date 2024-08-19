@@ -807,8 +807,6 @@ services:
       brunswick:
     ports:
       - 8082:8080 #Calibre desktop gui
-    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
-      - /dev/dri:/dev/dri
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -816,7 +814,6 @@ services:
       - TITLE=BrunswickBooks
       - CALIBRE_CACHE_DIRECTORY=/cache
       - CLI_ARGS="--trusted-ips 192.168.1.0/24"
-      - DRINODE=/dev/dri/renderD128
     volumes:
       - $APPDIR/calibre:/config
       - $APPDIR/calibre/cache:/cache
@@ -843,19 +840,14 @@ services:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
     restart: unless-stopped
-    security_opt:
-      - seccomp=unconfined
     networks:
       brunswick:
     ports:
       - 8083:8083 #Calibre Web gui
-    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
-      - /dev/dri:/dev/dri
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOCKER_MODS=linuxserver/mods:universal-calibre
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
     volumes:
@@ -897,8 +889,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOZZLE_BASE=/
-      - DOZZLE_LEVEL=error
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
       - DOZZLE_ENABLE_ACTIONS=true
     volumes:
