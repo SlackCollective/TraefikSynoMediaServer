@@ -796,46 +796,7 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# BOOK LIBRARY MANAGEMENT
-  # Calibre – Content server
-  calibre:
-    image: lscr.io/linuxserver/calibre:latest
-    container_name: calibre
-    restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
-    networks:
-      brunswick:
-    ports:
-      - 8082:8080 #Calibre desktop gui
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - TITLE=BrunswickBooks
-      - CALIBRE_CACHE_DIRECTORY=/cache
-      - CLI_ARGS="--trusted-ips 192.168.1.0/24"
-    volumes:
-      - $APPDIR/calibre:/config
-      - $APPDIR/calibre/cache:/cache
-      - $DATADIR:/data
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.calibre.entrypoints=websecure
-      - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.calibre.middlewares=chain-oauth@file
-      # HTTP Services
-      - traefik.http.routers.calibre.service=calibre
-      - traefik.http.services.calibre.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # CalibreWeb – Frontend content server
+  # CalibreWeb – Frontend book content server
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
@@ -850,6 +811,7 @@ services:
       - TZ=$TZ
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
+      - DOCKER_MODS=linuxserver/mods:universal-calibre
     volumes:
       - $APPDIR/calibreweb:/config
       - $DATADIR:/data
