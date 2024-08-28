@@ -24,7 +24,7 @@ services:
       - 449:443
       - 8089:8080
       - 8081:8081
-      # - 8085:8082
+      - 8085:8082
     command: # CLI arguments
       - --global.sendAnonymousUsage=true
       - --api.dashboard=true
@@ -43,7 +43,7 @@ services:
       - --entrypoints.websecure.http.tls.options=tls-opts@file
       - --entrypoints.traefik.address=:8080
       - --entrypoints.ping.address=:8081
-      # - --entrypoints.metrics.address=:8082
+      - --entrypoints.metrics.address=:8082
       # TLS
       # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
@@ -74,11 +74,11 @@ services:
       - --accessLog.fields.headers.defaultMode=drop
       - --accessLog.fields.headers.names.User-Agent=keep
       # Metrics Prometheus
-      # - --metrics.prometheus=true
-      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      # - --metrics.prometheus.addEntryPointsLabels=true
-      # - --metrics.prometheus.addServicesLabels=true
-      # - --metrics.prometheus.addRoutersLabels=true
+      - --metrics.prometheus=true
+      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+      - --metrics.prometheus.addRoutersLabels=true
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
@@ -94,21 +94,19 @@ services:
       - CF_API_KEY=$CF_MASTERAPI
       - DOMAINNAME # Passing the domain name to traefik container to be able to use the variable in rules.
     labels:
-      - traefik.enable=true
+      # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
-      - traefik.http.routers.ping.entrypoints=websecure
-      # - traefik.http.routers.metrics.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
+      - traefik.http.routers.ping.entrypoints=websecure
       - traefik.http.routers.ping.rule=Host(`traefik.$DOMAINNAME`) && Path(`/ping`)
-      # - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
+      - traefik.http.routers.metrics.entrypoints=websecure
+      - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=chain-oauth@file # For Google OAuth  
-      - traefik.http.routers.ping.middlewares=chain-oauth@file # For Google OAuth  
-      # - traefik.http.routers.metrics.middlewares=chain-oauth@file # For Google OAuth  
+      - traefik.http.routers.dashboard.middlewares=middlewares-oauth@file # For Google OAuth  
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       - traefik.http.routers.ping.service=ping@internal
-      # - traefik.http.routers.metrics.service=prometheus@internal    
+      - traefik.http.routers.metrics.service=prometheus@internal    
       ## Log viewer
       # - dozzle
       ## Updating and notifications
@@ -146,8 +144,7 @@ services:
       - traefik.http.routers.oauth.entrypoints=websecure
       - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.middlewares.oauth.forwardauth.address=http://oauth:4181
-      - traefik.http.middlewares.oauth.forwardauth.authResponseHeaders=X-Forwarded-User
+      - traefik.http.routers.oauth.middlewares=middlewares-oauth@file # For Google OAuth  
       # HTTP Services
       - traefik.http.routers.oauth.service=oauth
       - traefik.http.services.oauth.loadbalancer.server.port=4181
@@ -192,33 +189,32 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# HOMEPAGE
-  # Homepage - A dashboard for your server
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
+  # Organizr - A dashboard for your server
+  organizr:
+    image: ghcr.io/organizr/organizr:latest
+    container_name: organizr
     restart: unless-stopped
     networks:
       brunswick:
     ports:
-      - 3001:3000
+      - 3001:80
     volumes:
-      - $APPDIR/homepage:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock
+      - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
     labels:
       # HTTP Routers Auth
-      - traefik.http.routers.homepage.entrypoints=websecure
-      - traefik.http.routers.homepage.rule=Host(`$DOMAINNAME`)
+      - traefik.http.routers.organizr.entrypoints=websecure
+      - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.homepage.middlewares=chain-oauth@file
+      - traefik.http.routers.organizr.middlewares=middlewares-oauth@file
       # HTTP Services
-      - traefik.http.routers.homepage.service=homepage
-      - traefik.http.services.homepage.loadbalancer.server.port=3000
+      - traefik.http.routers.organizr.service=organizr
+      - traefik.http.services.organizr.loadbalancer.server.port=80
       ## Log viewer
-      # - dozzle
+      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -251,8 +247,7 @@ services:
       - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.prowlarr-bypass.middlewares=chain-no-auth@file
-      - traefik.http.routers.prowlarr.middlewares=chain-oauth@file
+      - traefik.http.routers.prowlarr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -291,8 +286,7 @@ services:
       - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-no-auth@file
-      - traefik.http.routers.sabnzbd.middlewares=chain-oauth@file
+      - traefik.http.routers.sabnzbd.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -304,14 +298,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=Sourcing
-      - homepage.name=Sabnzbd
-      - homepage.icon=sabnzbd.png
-      - homepage.href=https://sabnzbd.$DOMAINNAME
-      - homepage.widget.type=sabnzbd
-      - homepage.widget.url=http://sabnzbd:8080
-      - homepage.widget.key=$SABNZBD_API_KEY
 
   # qbittorrent - torrent downloader with VPN
   qbittorrent:
@@ -357,7 +343,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=chain-oauth@file
+      - traefik.http.routers.qbittorrent.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -368,15 +354,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=Sourcing
-      - homepage.name=qBittorrent
-      - homepage.icon=qbittorrent.png
-      - homepage.href=https://qbittorrent.$DOMAINNAME
-      - homepage.widget.type=qbittorrent
-      - homepage.widget.url=http://qbittorrent:8080
-      - homepage.widget.username=$ORGNAME
-      - homepage.widget.password=$ORGPASS
       
   # qbit_manage - torrent client management
   qbit_manage:
@@ -427,8 +404,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=chain-oauth@file
-      - traefik.http.routers.autobrr-bypass.middlewares=chain-no-auth@file
+      - traefik.http.routers.autobrr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
@@ -501,8 +477,7 @@ services:
       - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.radarr-bypass.middlewares=chain-no-auth@file
-      - traefik.http.routers.radarr.middlewares=chain-oauth@file
+      - traefik.http.routers.radarr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -514,15 +489,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=PVR
-      - homepage.name=Radarr
-      - homepage.icon=radarr.png
-      - homepage.href=https://radarr.$DOMAINNAME
-      - homepage.widget.type=radarr
-      - homepage.widget.url=http://radarr:7878
-      - homepage.widget.key=$RADARR_API_KEY
-      - homepage.widget.enableQueue=false
       
   # Sonarr - TV
   sonarr:
@@ -555,8 +521,7 @@ services:
       - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sonarr-bypass.middlewares=chain-no-auth@file
-      - traefik.http.routers.sonarr.middlewares=chain-oauth@file
+      - traefik.http.routers.sonarr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -568,15 +533,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=PVR
-      - homepage.name=Sonarr
-      - homepage.icon=sonarr.png
-      - homepage.href=https://sonarr.$DOMAINNAME
-      - homepage.widget.type=sonarr
-      - homepage.widget.url=http://sonarr:8989
-      - homepage.widget.key=$SONARR_API_KEY
-      - homepage.widget.enableQueue=false
       
   # Tdarr - Video conversion
   tdarr:
@@ -617,8 +573,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=websecure
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr-bypass.middlewares=chain-no-auth@file
-      - traefik.http.routers.tdarr.middlewares=chain-oauth@file
+      - traefik.http.routers.tdarr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.tdarr-bypass.service=tdarr
       - traefik.http.routers.tdarr.service=tdarr
@@ -658,8 +613,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.plex.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
@@ -670,15 +623,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=Theatre
-      - homepage.name=Plex
-      - homepage.icon=plex.png
-      - homepage.href=https://plex.$DOMAINNAME
-      - homepage.widget.type=plex
-      - homepage.widget.url=http://plex:32400
-      - homepage.widget.key=$PLEX_TOKEN
-      - homepage.widget.fields=["streams", "movies", "tv"]
 
   ############################# PLEX MONITORING/MANAGEMENT
   # Tautulli - Media play and user monitoring
@@ -702,8 +646,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.services.tautulli.loadbalancer.server.port=8181
@@ -714,17 +656,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      ## Homepage integration and widgets
-      - homepage.group=Theatre
-      - homepage.name=Tautulli
-      - homepage.icon=tautulli.png
-      - homepage.href=https://tautulli.$DOMAINNAME
-      - homepage.widget.type=tautulli
-      - homepage.widget.url=http://tautulli:8181
-      - homepage.widget.enableUser=true
-      - homepage.widget.showEpisodeNumber=true
-      - homepage.widget.expandOneStreamToTwoRows=true
-      - homepage.widget.key=$TAUTULLI_API_KEY
       
   # Overseer - Allows Plex users to request media
   overseerr:
@@ -746,8 +677,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.overseerr.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
       - traefik.http.services.overseerr.loadbalancer.server.port=5055
@@ -783,7 +712,7 @@ services:
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.metube.middlewares=chain-oauth@file
+      - traefik.http.routers.metube.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.metube.service=metube
       - traefik.http.services.metube.loadbalancer.server.port=8081
@@ -823,7 +752,7 @@ services:
       - traefik.http.routers.calibre.entrypoints=websecure
       - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.calibre.middlewares=chain-oauth@file
+      - traefik.http.routers.calibre.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.calibre.service=calibre
       - traefik.http.services.calibre.loadbalancer.server.port=8080
@@ -861,8 +790,7 @@ services:
       - traefik.http.routers.calibreweb.entrypoints=websecure
       - traefik.http.routers.calibreweb.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.calibreweb.middlewares=chain-oauth@file
-      - traefik.http.routers.calibreopds.middlewares=chain-no-auth@file
+      - traefik.http.routers.calibreweb.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.calibreweb.service=calibreweb
       - traefik.http.routers.calibreopds.service=calibreweb
@@ -898,7 +826,7 @@ services:
       - traefik.http.routers.dozzle.entrypoints=websecure
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dozzle.middlewares=chain-oauth@file
+      - traefik.http.routers.dozzle.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
@@ -929,7 +857,7 @@ services:
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=chain-oauth@file
+      - traefik.http.routers.notifiarr.middlewares=middlewares-oauth@file
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
@@ -971,8 +899,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.vaultwarden.middlewares=chain-no-auth@file
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80
