@@ -725,76 +725,40 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# BOOK LIBRARY MANAGEMENT
-  # Calibre – Content server
-  calibre:
-    image: lscr.io/linuxserver/calibre:latest
-    container_name: calibre
-    restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
-    networks:
-      brunswick:
-    ports:
-      - 8082:8080 #Calibre desktop gui
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - TITLE=BrunswickBooks
-      - CALIBRE_CACHE_DIRECTORY=/cache
-      - CLI_ARGS="--trusted-ips 192.168.1.0/24"
-    volumes:
-      - $APPDIR/calibre:/config
-      - $APPDIR/calibre/cache:/cache
-      - $DATADIR:/data
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.calibre.entrypoints=websecure
-      - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.calibre.middlewares=middlewares-oauth@file
-      # HTTP Services
-      - traefik.http.routers.calibre.service=calibre
-      - traefik.http.services.calibre.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # CalibreWeb – Frontend book content server
-  calibre-web:
-    image: lscr.io/linuxserver/calibre-web:latest
-    container_name: calibre-web
+  # Calibre Web Automated - fork of Calibre-web that includes auto format conversion
+  calibreweb:
+    image: crocodilestick/calibre-web-automated:latest
+    container_name: books
     restart: unless-stopped
     networks:
       brunswick:
     ports:
-      - 8083:8083 #Calibre Web gui
+      - 8083:8083
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - DOCKER_MODS=linuxserver/mods:universal-calibre
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
     volumes:
-      - $APPDIR/calibreweb:/config
-      - $DATADIR:/data
+      - $APPDIR/books:/config
+      - $DATADIR/imports:/cwa-book-ingest
+      - $DATADIR/media/books:/calibre-library
+      - $DATADIR/media/books:/books
     labels:
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.calibreopds.entrypoints=websecure
-      - traefik.http.routers.calibreopds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
+      - traefik.http.routers.opds.entrypoints=websecure
+      - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
       # HTTP Routers Auth
-      - traefik.http.routers.calibreweb.entrypoints=websecure
-      - traefik.http.routers.calibreweb.rule=Host(`books.$DOMAINNAME`)
+      - traefik.http.routers.books.entrypoints=websecure
+      - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.calibreweb.middlewares=middlewares-oauth@file
+      - traefik.http.routers.books.middlewares=middlewares-oauth@file
       # HTTP Services
-      - traefik.http.routers.calibreweb.service=calibreweb
-      - traefik.http.routers.calibreopds.service=calibreweb
-      - traefik.http.services.calibreweb.loadbalancer.server.port=8083
+      - traefik.http.routers.books.service=books
+      - traefik.http.routers.opds.service=books
+      - traefik.http.services.books.loadbalancer.server.port=8083
       ## Log viewer
       - dozzle
       ## Updating and notifications
