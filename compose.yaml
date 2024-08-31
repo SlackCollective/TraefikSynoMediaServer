@@ -102,6 +102,8 @@ services:
       - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
+      - traefik.http.routers.ping.middlewares=oauth
+      - traefik.http.routers.metrics.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       - traefik.http.routers.ping.service=ping@internal
@@ -208,8 +210,6 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.organizr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -248,6 +248,7 @@ services:
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=oauth
+      - traefik.http.routers.prowlarr.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -287,6 +288,7 @@ services:
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=oauth
+      - traefik.http.routers.sabnzbd.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -311,7 +313,7 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
     devices:
-      - /dev/net/tun:/dev/net/tun # Perhaps optional, if not on e.g. Syno NAS
+      - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
       brunswick:
     ports:
@@ -344,6 +346,7 @@ services:
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.qbittorrent.middlewares=oauth
+      - traefik.http.routers.qbittorrent.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -480,6 +483,7 @@ services:
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.radarr.middlewares=oauth
+      - traefik.http.routers.radarr.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -524,6 +528,7 @@ services:
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=oauth
+      - traefik.http.routers.sonarr.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -757,6 +762,7 @@ services:
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.books.middlewares=oauth
+      - traefik.http.routers.books.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.routers.opds.service=books
@@ -793,6 +799,7 @@ services:
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.dozzle.middlewares=oauth
+      - traefik.http.routers.dozzle.middlewares=iframe@file
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
