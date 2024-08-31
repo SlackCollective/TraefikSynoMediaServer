@@ -40,7 +40,6 @@ services:
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
-      - --entrypoints.websecure.http.tls.options=tls-opts@file
       - --entrypoints.traefik.address=:8080
       - --entrypoints.ping.address=:8081
       - --entrypoints.metrics.address=:8082
@@ -57,12 +56,12 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
-      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS,$TAILSCALE_IP
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
       # Logging
       - --log=true
-      - --log.level=INFO # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
       - --log.maxSize=1
       - --log.maxAge=3
       - --log.filepath=/logs/traefik.log
@@ -102,7 +101,7 @@ services:
       - traefik.http.routers.metrics.entrypoints=websecure
       - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=middlewares-oauth@file # For Google OAuth  
+      - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       - traefik.http.routers.ping.service=ping@internal
@@ -144,9 +143,9 @@ services:
       - traefik.http.routers.oauth.entrypoints=websecure
       - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.oauth.middlewares=middlewares-oauth@file # For Google OAuth  
+      - traefik.http.middlewares.oauth.forwardauth.address=http://oauth:4181
+      - traefik.http.middlewares.oauth.forwardauth.authResponseHeaders=X-Forwarded-User
       # HTTP Services
-      - traefik.http.routers.oauth.service=oauth
       - traefik.http.services.oauth.loadbalancer.server.port=4181
       ## Log viewer
       # - dozzle
@@ -157,7 +156,7 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
       
   # Cloudflare DDNS - Dynamic DNS Updater
-  cf-ddns:
+  cloudflare:
     image: oznu/cloudflare-ddns
     container_name: cloudflare-ddns
     restart: unless-stopped
@@ -177,8 +176,9 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.cloudflare.entrypoints=websecure
-      - traefik.http.routers.cloudflare.service=cloudflare
+      - traefik.http.routers.cloudflare.rule=Host(`cloudflare.$DOMAINNAME`)
       # HTTP Services
+      - traefik.http.routers.cloudflare.service=cloudflare
       - traefik.http.services.cloudflare.loadbalancer.server.port=443
       ## Log viewer
       # - dozzle
@@ -209,7 +209,7 @@ services:
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.organizr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.organizr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -247,7 +247,7 @@ services:
       - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.prowlarr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.prowlarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -286,7 +286,7 @@ services:
       - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=middlewares-oauth@file
+      - traefik.http.routers.sabnzbd.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -343,7 +343,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=middlewares-oauth@file
+      - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -373,8 +373,9 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.qbitmanage.entrypoints=websecure
-      - traefik.http.routers.qbitmanage.service=qbitmanage
+      - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # HTTP Services
+      - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=443
       ## Log viewer
       - dozzle
@@ -404,7 +405,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.autobrr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
@@ -434,8 +435,9 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.omegabrr.entrypoints=websecure
-      - traefik.http.routers.omegabrr.service=omegabrr
+      - traefik.http.routers.omegabrr.rule=Host(`omegabrr.$DOMAINNAME`)
       # HTTP Services
+      - traefik.http.routers.omegabrr.service=omegabrr
       - traefik.http.services.omegabrr.loadbalancer.server.port=7441
       ## Log viewer
       - dozzle
@@ -477,7 +479,7 @@ services:
       - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.radarr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.radarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -521,7 +523,7 @@ services:
       - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sonarr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.sonarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -573,7 +575,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=websecure
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.tdarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.tdarr-bypass.service=tdarr
       - traefik.http.routers.tdarr.service=tdarr
@@ -712,7 +714,7 @@ services:
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.metube.middlewares=middlewares-oauth@file
+      - traefik.http.routers.metube.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.metube.service=metube
       - traefik.http.services.metube.loadbalancer.server.port=8081
@@ -754,7 +756,7 @@ services:
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.books.middlewares=middlewares-oauth@file
+      - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.routers.opds.service=books
@@ -790,7 +792,7 @@ services:
       - traefik.http.routers.dozzle.entrypoints=websecure
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dozzle.middlewares=middlewares-oauth@file
+      - traefik.http.routers.dozzle.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
@@ -821,7 +823,7 @@ services:
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=middlewares-oauth@file
+      - traefik.http.routers.notifiarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
