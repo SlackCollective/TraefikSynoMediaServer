@@ -1,0 +1,16 @@
+http:
+  middlewares:
+    iframe:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+        accessControlAllowCredentials: true
+        accessControlAllowHeaders: "*"
+        accessControlAllowOriginList: "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+        customFrameOptionsValue: "sameorigin"
+        stsincludeSubdomains: true
+        allowedHosts: ["yourdomain", "localhost", "127.0.0.1"]
