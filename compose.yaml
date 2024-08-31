@@ -158,7 +158,7 @@ services:
   # Cloudflare DDNS - Dynamic DNS Updater
   cloudflare:
     image: oznu/cloudflare-ddns
-    container_name: cloudflare-ddns
+    container_name: cloudflare
     restart: unless-stopped
     networks:
       brunswick:
