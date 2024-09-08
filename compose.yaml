@@ -123,8 +123,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    # ports:
-      # - 4181:4181
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
@@ -353,6 +351,9 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+    depends_on:
+      qbittorrent:
+        condition: service_started
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -412,6 +413,11 @@ services:
       brunswick:
     ports:
       - 7441:7441
+    depends_on:
+      sonarr:
+        condition: service_started
+      radarr:
+        condition: service_started
     user: $PUID:$PGID
     environment:
       - TZ=$TZ
@@ -854,4 +860,3 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-
