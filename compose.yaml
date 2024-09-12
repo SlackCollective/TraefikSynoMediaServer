@@ -723,6 +723,8 @@ services:
       brunswick:
     ports:
       - 8082:8080 #Calibre desktop gui
+      - 8083:8081 #Webserver and OPDS feed
+      - 8181:8181 #Calibre desktop gui HTTPS
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -738,6 +740,9 @@ services:
       - $APPDIR/calibre/cache:/cache
       - $DATADIR:/data
     labels:
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.opds.entrypoints=websecure
+      - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`)
       # HTTP Routers Auth
       - traefik.http.routers.calibre.entrypoints=websecure
       - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
@@ -745,49 +750,9 @@ services:
       - traefik.http.routers.calibre.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.calibre.service=calibre
-      - traefik.http.services.calibre.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-      
-  # Calibre Web Automated - fork of Calibre-web that includes auto format conversion
-  calibreweb:
-    image: crocodilestick/calibre-web-automated:latest
-    container_name: books
-    restart: unless-stopped
-    networks:
-      brunswick:
-    ports:
-      - 8083:8083
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      # - DOCKER_MODS=linuxserver/mods:universal-calibre
-      - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
-      - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
-    volumes:
-      - $APPDIR/books:/config
-      - $DATADIR/imports:/cwa-book-ingest
-      - $DATADIR/media/books:/calibre-library
-      - $DATADIR/media/books:/books
-    labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.opds.entrypoints=websecure
-      - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
-      # HTTP Routers Auth
-      - traefik.http.routers.books.entrypoints=websecure
-      - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.books.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.books.service=books
       - traefik.http.routers.opds.service=books
-      - traefik.http.services.books.loadbalancer.server.port=8083
+      - traefik.http.services.calibre.loadbalancer.server.port=8080
+      - traefik.http.services.books.loadbalancer.server.port=8081
       ## Log viewer
       - dozzle
       ## Updating and notifications
