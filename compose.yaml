@@ -767,7 +767,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOCKER_MODS=linuxserver/mods:universal-calibre
+      # - DOCKER_MODS=linuxserver/mods:universal-calibre
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
     volumes:
@@ -777,16 +777,16 @@ services:
       - $DATADIR/media/books:/books
     labels:
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.opds.entrypoints=websecure
-      - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
+      # - traefik.http.routers.opds.entrypoints=websecure
+      # - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
       # HTTP Routers Auth
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.books.middlewares=oauth
+      # - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
-      - traefik.http.routers.opds.service=books
+      # - traefik.http.routers.opds.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
       ## Log viewer
       - dozzle
