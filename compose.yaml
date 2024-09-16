@@ -41,8 +41,14 @@ services:
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.traefik.address=:8080
-      # - --entrypoints.ping.address=:8081
+      - --entrypoints.ping.address=:8081
       # - --entrypoints.metrics.address=:8082
+      # Metrics Prometheus
+      # - --metrics.prometheus=true
+      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      # - --metrics.prometheus.addEntryPointsLabels=true
+      # - --metrics.prometheus.addServicesLabels=true
+      # - --metrics.prometheus.addRoutersLabels=true
       # TLS
       # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
@@ -65,19 +71,12 @@ services:
       - --log.maxSize=1
       - --log.maxAge=3
       - --log.filepath=/logs/traefik.log
-      # - --accesslog=true
-      # - --accesslog.format=json #new
-      # - --accesslog.filepath=/logs/access.log
-      # - --accessLog.bufferingSize=10 # Configuring a buffer of 10 lines
-      # - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      # - --accessLog.fields.headers.defaultMode=drop
-      # - --accessLog.fields.headers.names.User-Agent=keep
-      # Metrics Prometheus
-      # - --metrics.prometheus=true
-      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      # - --metrics.prometheus.addEntryPointsLabels=true
-      # - --metrics.prometheus.addServicesLabels=true
-      # - --metrics.prometheus.addRoutersLabels=true
+      - --accesslog=true
+      - --accesslog.filepath=/logs/access.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 10 lines
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --accessLog.fields.headers.defaultMode=drop
+      - --accessLog.fields.headers.names.User-Agent=keep
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
@@ -96,18 +95,10 @@ services:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
-      # - traefik.http.routers.ping.entrypoints=websecure
-      # - traefik.http.routers.ping.rule=Host(`traefik.$DOMAINNAME`) && Path(`/ping`)
-      # - traefik.http.routers.metrics.entrypoints=websecure
-      # - traefik.http.routers.metrics.rule=Host(`traefik.$DOMAINNAME`) && Path(`/metrics`)
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
-      # - traefik.http.routers.ping.middlewares=oauth
-      # - traefik.http.routers.metrics.middlewares=oauth
       # Services - API
-      - traefik.http.routers.dashboard.service=api@internal
-      # - traefik.http.routers.ping.service=ping@internal
-      # - traefik.http.routers.metrics.service=prometheus@internal    
+      - traefik.http.routers.dashboard.service=api@internal  
       ## Log viewer
       # - dozzle
       ## Updating and notifications
