@@ -66,17 +66,17 @@ services:
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
       # Logging
-      # - --log=true
-      # - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      # - --log.maxSize=1
-      # - --log.maxAge=3
-      # - --log.filepath=/logs/traefik.log
-      # - --accesslog=true
-      # - --accesslog.filepath=/logs/access.log
-      # - --accessLog.bufferingSize=100 # Configuring a buffer of 10 lines
-      # - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      # - --accessLog.fields.headers.defaultMode=drop
-      # - --accessLog.fields.headers.names.User-Agent=keep
+      - --log=true
+      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --log.maxSize=1
+      - --log.maxAge=3
+      - --log.filepath=/logs/traefik.log
+      - --accesslog=true
+      - --accesslog.filepath=/logs/access.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 10 lines
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --accessLog.fields.headers.defaultMode=drop
+      - --accessLog.fields.headers.names.User-Agent=keep
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
