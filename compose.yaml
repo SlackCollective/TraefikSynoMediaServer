@@ -614,7 +614,7 @@ services:
     networks:
       brunswick:
     ports:
-      - 8182:8181
+      - 8181:8181
     environment:
       - PUID=$PUID
       - PGID=$PGID
