@@ -8,6 +8,17 @@ networks:
     driver_opts:
       parent: eth0
 
+  internal:
+    name: internal
+    internal: true
+    driver: bridge
+    attachable: true
+    
+x-logging: &loki-logging
+  driver: json-file
+  options:
+    tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
@@ -19,12 +30,13 @@ services:
       - no-new-privileges:true
     networks:
       brunswick:
+      internal:
     ports:
       - 89:80
       - 449:443
-      # - 8089:8080
-      # - 8081:8081
-      # - 8085:8082
+      - 8089:8080
+      - 8081:8081
+      - 8082:8082
     command: # CLI arguments
       - --global.sendAnonymousUsage=true
       - --api.dashboard=true
@@ -42,13 +54,13 @@ services:
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.traefik.address=:8080
       - --entrypoints.ping.address=:8081
-      # - --entrypoints.metrics.address=:8082
+      - --entrypoints.metrics.address=:8082
       # Metrics Prometheus
-      # - --metrics.prometheus=true
-      # - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      # - --metrics.prometheus.addEntryPointsLabels=true
-      # - --metrics.prometheus.addServicesLabels=true
-      # - --metrics.prometheus.addRoutersLabels=true
+      - --metrics.prometheus=true
+      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+      - --metrics.prometheus.addRoutersLabels=true
       # TLS
       # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
@@ -73,10 +85,7 @@ services:
       - --log.filepath=/logs/traefik.log
       - --accesslog=true
       - --accesslog.filepath=/logs/access.log
-      - --accessLog.bufferingSize=100 # Configuring a buffer of 10 lines
-      - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      - --accessLog.fields.headers.defaultMode=drop
-      - --accessLog.fields.headers.names.User-Agent=keep
+      - --accessLog.bufferingSize=30 # Configuring a buffer of 30 lines
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
@@ -90,7 +99,7 @@ services:
       - TZ=$TZ
       - CF_API_EMAIL=$SMTP_USER
       - CF_API_KEY=$CF_MASTERAPI
-      - DOMAINNAME # Passing the domain name to traefik container to be able to use the variable in rules.
+      - DOMAINNAME # Passing the domain name to use the variable in rules.
     labels:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
@@ -99,8 +108,6 @@ services:
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal  
-      ## Log viewer
-      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -138,8 +145,6 @@ services:
       - traefik.http.middlewares.oauth.forwardauth.authResponseHeaders=X-Forwarded-User
       # HTTP Services
       - traefik.http.services.oauth.loadbalancer.server.port=4181
-      ## Log viewer
-      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -193,8 +198,6 @@ services:
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -232,8 +235,6 @@ services:
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
       - traefik.http.services.prowlarr.loadbalancer.server.port=9696
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -271,8 +272,6 @@ services:
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
       - traefik.http.services.sabnzbd.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -306,9 +305,7 @@ services:
       - VPN_PROVIDER=generic
       - VPN_LAN_NETWORK=192.168.1.0/24
       - VPN_LAN_LEAK_ENABLED=false
-      # - VPN_EXPOSE_PORTS_ON_LAN=
       - VPN_AUTO_PORT_FORWARD=51007
-      # - VPN_AUTO_PORT_FORWARD_TO_PORTS=
       - VPN_KEEP_LOCAL_DNS=false
       - VPN_FIREWALL_TYPE=auto
       - VPN_HEALTHCHECK_ENABLED=true
@@ -327,8 +324,6 @@ services:
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -349,13 +344,12 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - VERIFY_WEBUI_CERTIFICATE=False
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
       - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -387,8 +381,6 @@ services:
       - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
-      ## Log viewer
-      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -414,12 +406,10 @@ services:
       - $APPDIR/omegabrr:/config
     labels:
       # HTTP Routers
-      - traefik.http.routers.omegabrr.entrypoints=web
+      - traefik.http.routers.omegabrr.entrypoints=websecure
       # HTTP Services
       - traefik.http.routers.omegabrr.service=omegabrr
       - traefik.http.services.omegabrr.loadbalancer.server.port=7441
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -463,8 +453,6 @@ services:
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
       - traefik.http.services.radarr.loadbalancer.server.port=7878
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -507,8 +495,6 @@ services:
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
       - traefik.http.services.sonarr.loadbalancer.server.port=8989
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -559,8 +545,6 @@ services:
       - traefik.http.routers.tdarr-bypass.service=tdarr
       - traefik.http.routers.tdarr.service=tdarr
       - traefik.http.services.tdarr.loadbalancer.server.port=8265
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -597,8 +581,6 @@ services:
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -630,8 +612,6 @@ services:
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.services.tautulli.loadbalancer.server.port=8181
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -661,8 +641,6 @@ services:
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
       - traefik.http.services.overseerr.loadbalancer.server.port=5055
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -697,8 +675,6 @@ services:
       # HTTP Services
       - traefik.http.routers.metube.service=metube
       - traefik.http.services.metube.loadbalancer.server.port=8081
-      ## Log viewer
-      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -716,7 +692,7 @@ services:
     networks:
       brunswick:
     ports:
-      - 8082:8080 #Calibre desktop gui
+      - 8088:8080 #Calibre desktop gui
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -740,8 +716,6 @@ services:
       # HTTP Services
       - traefik.http.routers.calibre.service=calibre
       - traefik.http.services.calibre.loadbalancer.server.port=8080
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -761,7 +735,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      # - DOCKER_MODS=linuxserver/mods:universal-calibre
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
     volumes:
@@ -770,20 +743,12 @@ services:
       - $DATADIR/media/books:/calibre-library
       - $DATADIR/media/books:/books
     labels:
-      # HTTP Routers Auth Bypass
-      # - traefik.http.routers.opds.entrypoints=websecure
-      # - traefik.http.routers.opds.rule=Host(`books.$DOMAINNAME`) && PathPrefix(`/opds`)
       # HTTP Routers Auth
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
-      # Middlewares
-      # - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
-      # - traefik.http.routers.opds.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -791,37 +756,139 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# SYSTEM MANAGEMENT/MONITORING
-  # Dozzle - Real-time Docker Log Viewer
-  dozzle:
-    image: amir20/dozzle
-    container_name: dozzle
+  # Prometheus - metrics
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    hostname: prometheus
     restart: unless-stopped
+    logging: *loki-logging
+    user: "0:0"
+    depends_on:
+      - traefik
     networks:
       brunswick:
-    ports:
-      - 9999:8080
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
-      - DOZZLE_ENABLE_ACTIONS=true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - $APPDIR/traefik/prometheus/settings/:/etc/prometheus/
+      - $APPDIR/traefik/prometheus/data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.size=256MB
     labels:
       # HTTP Routers Auth
-      - traefik.http.routers.dozzle.entrypoints=websecure
-      - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dozzle.middlewares=oauth
+      - traefik.http.routers.prometheus.middlewares=oauth
       # HTTP Services
-      - traefik.http.routers.dozzle.service=dozzle
-      - traefik.http.services.dozzle.loadbalancer.server.port=8080
+      - traefik.http.routers.prometheus.service=prometheus
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # Grafana - metrics visualised
+  grafana:
+    hostname: grafana
+    container_name: grafana
+    image: grafana/grafana:10.0.5
+    restart: unless-stopped
+    logging: *loki-logging
+    user: "0:0"
+    depends_on:
+      - traefik
+      - prometheus
+    networks:
+      brunswick:
+    volumes:
+      - $APPDIR/traefik/grafana/data:/var/lib/grafana
+      - $APPDIR/traefik/grafana/settings/:/etc/grafana/provisioning/
+    labels:
+      # HTTP Routers Auth
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.grafana.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.grafana.service=grafana
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # Loki - metrics gathering
+  loki:
+    hostname: loki
+    container_name: loki
+    image: grafana/loki:2.9.0
+    command: -config.file=/mnt/config/loki-config.yml
+    restart: unless-stopped
+    logging: *loki-logging
+    user: "0:0"
+    networks:
+      brunswick:
+    ports:
+      - 127.0.0.1:3100:3100
+    volumes:
+      - $APPDIR/traefik/loki/data:/loki
+      - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
+    labels:
+      # HTTP Routers Auth
+      - traefik.http.routers.loki.entrypoints=websecure
+      - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.loki.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.loki.service=loki
+      - traefik.http.services.loki.loadbalancer.server.port=3100
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # promtail - docker system metrics
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    hostname: promtail
+    command: -config.file /mnt/config/promtail-config.yaml
+    restart: unless-stopped
+    logging: *loki-logging
+    user: "0:0"
+    networks:
+      brunswick:
+    volumes:
+      # logs for linux host only
+      - /var/log:/host/log
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /volume1/@docker/containers:/host/containers
+      - $APPDIR/traefik/promtail/settings/promtail-config.yaml:/mnt/config/promtail-config.yaml
+
+  nodeexporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: nodeexporter
+    hostname: nodeexporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    logging: *loki-logging
+    networks:
+      brunswick:
+    expose:
+      - 9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
 
   # Notifiarr - update ARR profiles
   notifiarr:
@@ -848,8 +915,6 @@ services:
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
-      ## Log viewer
-      - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -889,8 +954,6 @@ services:
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80
-      ## Log viewer
-      # - dozzle
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
