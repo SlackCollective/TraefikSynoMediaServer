@@ -40,7 +40,11 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### PASSWORD MANAGEMENT
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
-* dozzle
+* promtail
+* prometheus
+* loki
+* grafana
+* node-exporter
 * notifiarr
 
 Requires docker-compose.yaml and .env file in the same directory.
