@@ -7,12 +7,6 @@ networks:
     enable_ipv6: false
     driver_opts:
       parent: eth0
-
-  internal:
-    name: internal
-    internal: true
-    driver: bridge
-    attachable: true
     
 x-logging: &loki-logging
   driver: json-file
@@ -30,7 +24,6 @@ services:
       - no-new-privileges:true
     networks:
       brunswick:
-      internal:
     ports:
       - 89:80
       - 449:443
@@ -88,8 +81,10 @@ services:
       - --accessLog.bufferingSize=30 # Configuring a buffer of 30 lines
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
-      interval: 5s
+      interval: 10s
+      timeout: 5s
       retries: 3
+      start_period: 5s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $DOCKERDIR/certs/acme.json:/acme.json
@@ -104,6 +99,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
+      # `metrics` router configuration
+      - traefik.http.routers.metrics.entrypoints=websecure
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
@@ -119,6 +116,7 @@ services:
     image: thomseddon/traefik-forward-auth:latest
     container_name: oauth
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     environment:
@@ -156,6 +154,7 @@ services:
     image: oznu/cloudflare-ddns
     container_name: cloudflare
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     environment:
@@ -181,6 +180,7 @@ services:
     image: ghcr.io/organizr/organizr:latest
     container_name: organizr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -209,11 +209,12 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
+    restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
       - 9696:9696
-    restart: unless-stopped
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -246,11 +247,12 @@ services:
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
+    restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
       - 9998:8080
-    restart: unless-stopped
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -283,6 +285,7 @@ services:
     image: ghcr.io/hotio/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
+    logging: *loki-logging
     hostname: qbittorrent.internal
     cap_add:
       - NET_ADMIN
@@ -335,6 +338,7 @@ services:
     image: bobokun/qbit_manage
     container_name: qbitmanage
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     depends_on:
@@ -361,6 +365,7 @@ services:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -392,6 +397,7 @@ services:
     image: ghcr.io/autobrr/omegabrr:latest
     container_name: omegabrr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     depends_on:
@@ -422,6 +428,7 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -464,6 +471,7 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -506,6 +514,7 @@ services:
     image: haveagitgat/tdarr:latest
     container_name: tdarr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -557,6 +566,7 @@ services:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -593,6 +603,7 @@ services:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -623,6 +634,7 @@ services:
     image: lscr.io/linuxserver/overseerr:latest
     container_name: overseerr
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -653,6 +665,7 @@ services:
     image: ghcr.io/alexta69/metube
     container_name: metube
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -687,6 +700,7 @@ services:
     image: lscr.io/linuxserver/calibre:latest
     container_name: calibre
     restart: unless-stopped
+    logging: *loki-logging
     security_opt:
       - seccomp:unconfined
     networks:
@@ -727,6 +741,7 @@ services:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -805,7 +820,7 @@ services:
       brunswick:
     volumes:
       - $APPDIR/traefik/grafana/data:/var/lib/grafana
-      - $APPDIR/traefik/grafana/settings/:/etc/grafana/provisioning/
+      - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
     labels:
       # HTTP Routers Auth
       - traefik.http.routers.grafana.entrypoints=websecure
@@ -896,6 +911,7 @@ services:
     container_name: notifiarr
     hostname: notifiarr #must be set, can be anything
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -927,6 +943,7 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: unless-stopped
+    logging: *loki-logging
     networks:
       brunswick:
     environment:
