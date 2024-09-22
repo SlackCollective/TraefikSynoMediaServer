@@ -853,11 +853,8 @@ services:
       - $APPDIR/traefik/loki/data:/loki
       - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.loki.entrypoints=websecure
-      - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.loki.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.loki.service=loki
       - traefik.http.services.loki.loadbalancer.server.port=3100
