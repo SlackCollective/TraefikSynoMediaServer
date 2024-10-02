@@ -25,11 +25,8 @@ services:
     networks:
       brunswick:
     ports:
-      - 89:80
-      - 449:443
-      - 8089:8080
-      - 8081:8081
-      - 8082:8082
+      - "89:80"
+      - "449:443"
     command: # CLI arguments
       - --global.sendAnonymousUsage=true
       - --api.dashboard=true
@@ -99,8 +96,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
-      # `metrics` router configuration
-      - traefik.http.routers.metrics.entrypoints=websecure
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
@@ -183,8 +178,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 3001:80
     volumes:
       - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
@@ -213,8 +206,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 9696:9696
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -251,8 +242,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 9998:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -296,8 +285,6 @@ services:
       - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
       brunswick:
-    ports:
-      - 9997:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -368,8 +355,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 7474:7474
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -431,8 +416,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 7878:7878
     depends_on:
       sabnzbd:
         condition: service_started
@@ -474,8 +457,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 8989:8989
     depends_on:
       sabnzbd:
         condition: service_started
@@ -517,8 +498,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 8265:8265
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -569,8 +548,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 32400:32400
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -606,8 +583,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 8181:8181
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -637,8 +612,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 5055:5055
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -668,8 +641,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 8084:8081
     environment:
       - UID=$PUID
       - GID=$PGID
@@ -705,8 +676,6 @@ services:
       - seccomp:unconfined
     networks:
       brunswick:
-    ports:
-      - 8088:8080 #Calibre desktop gui
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
@@ -744,8 +713,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 8083:8083
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -847,8 +814,6 @@ services:
     user: "0:0"
     networks:
       brunswick:
-    ports:
-      - 127.0.0.1:3100:3100
     volumes:
       - $APPDIR/traefik/loki/data:/loki
       - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
@@ -911,8 +876,6 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 5454:5454
     environment:
       - TZ=$TZ
       - DN_API_KEY=$NOTIFIARR
