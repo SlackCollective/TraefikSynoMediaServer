@@ -705,7 +705,7 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # Calibre Web Automated - fork of Calibre-web that includes auto format conversion
+  # Calibre Web Automated - fork of Calibre-web, including format conversion
   calibreweb:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
@@ -846,6 +846,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /volume1/@docker/containers:/host/containers
       - $APPDIR/traefik/promtail/settings/promtail-config.yaml:/mnt/config/promtail-config.yaml
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
 
   nodeexporter:
     image: prom/node-exporter:v1.6.1
@@ -860,12 +866,16 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    expose:
-      - 9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
 
   # Notifiarr - update ARR profiles
   notifiarr:
