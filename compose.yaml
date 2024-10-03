@@ -309,6 +309,7 @@ services:
       - VPN_HEALTHCHECK_ENABLED=true
       - PRIVOXY_ENABLED=false
       - UNBOUND_ENABLED=false
+      - QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE=1
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -318,7 +319,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=oauth
+      # - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
