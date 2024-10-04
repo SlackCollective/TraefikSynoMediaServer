@@ -318,8 +318,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
-      # Middlewares
-      # - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -574,7 +572,6 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
       - VERSION=docker
-      - ADVERTISE_IP=172.28.6.254:32400
       # - PLEX_CLAIM= #only needed when first claiming server
     volumes:
       - ${APPDIR}/plex:/config:rw
