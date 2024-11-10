@@ -17,7 +17,7 @@ services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:comte
+    image: traefik:v3.2
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -29,8 +29,9 @@ services:
       - 449:443
     command: # CLI arguments
       - --global.sendAnonymousUsage=true
+      - --global.checknewversion=true
       - --api.dashboard=true
-      - --api.insecure=false
+      # - --api.insecure=true
       - --ping=true
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
@@ -42,18 +43,16 @@ services:
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
-      - --entrypoints.traefik.address=:8080
-      - --entrypoints.ping.address=:8081
-      - --entrypoints.metrics.address=:8082
       # Metrics Prometheus
+      - --metrics=true
       - --metrics.prometheus=true
+      - --metrics.addinternals=true
       - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      - --metrics.prometheus.addEntryPointsLabels=true
       - --metrics.prometheus.addServicesLabels=true
-      - --metrics.prometheus.addRoutersLabels=true
       # TLS
-      # - --serversTransport.insecureSkipVerify=true
+      # - --serversTransport.insecureSkipVerify=true # Instead add to router/services individually, in rules folder
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
+      # Enable below and disable above when testing, to not hit CF rate-limits
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
       - --entrypoints.websecure.http.tls.domains[0].main=$DOMAINNAME
@@ -69,12 +68,13 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       # Logging
       - --log=true
+      - --log.compress=true
       - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
       - --log.maxSize=1
       - --log.maxAge=3
-      - --log.filepath=/logs/traefik.log
+      - --log.maxbackups=3
       - --accesslog=true
-      - --accesslog.filepath=/logs/access.log
+      - --accesslog.addinternals=true
       - --accessLog.bufferingSize=30 # Configuring a buffer of 30 lines
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
@@ -86,7 +86,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $APPDIR/traefik/rules:/rules
-      - $APPDIR/traefik/logs:/logs
     environment:
       - TZ=$TZ
       - CF_API_EMAIL=$SMTP_USER
@@ -95,11 +94,12 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
-      - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
+      - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=oauth
+      - traefik.http.middlewares.gzip.compress=true
+      - traefik.http.routers.dashboard.middlewares=oauth,gzip
       # Services - API
-      - traefik.http.routers.dashboard.service=api@internal  
+      - traefik.http.routers.dashboard.service=api@internal
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -114,13 +114,15 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
+    ports:
+      - 4181:4181
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
       - INSECURE_COOKIE=true
       - AUTH_HOST=oauth.$DOMAINNAME
       - URL_PATH=/_oauth
-      - LOG_LEVEL=warn # set to trace while testing bypass rules
+      - LOG_LEVEL=error # set to trace while testing bypass rules
       - LOG_FORMAT=text
       - LIFETIME=2592000 # 30 days, in seconds
       - DEFAULT_ACTION=auth
@@ -150,8 +152,7 @@ services:
     container_name: cloudflare
     restart: unless-stopped
     logging: *loki-logging
-    networks:
-      brunswick:
+    network_mode: host
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -187,9 +188,11 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.organizr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -226,7 +229,7 @@ services:
       - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.prowlarr.middlewares=oauth
+      - traefik.http.routers.prowlarr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -264,7 +267,7 @@ services:
       - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=oauth
+      - traefik.http.routers.sabnzbd.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -277,7 +280,7 @@ services:
 
   # qbittorrent - torrent downloader with VPN
   qbittorrent:
-    image: ghcr.io/hotio/qbittorrent:latest
+    image: ghcr.io/hotio/qbittorrent
     container_name: qbittorrent
     restart: unless-stopped
     logging: *loki-logging
@@ -310,6 +313,7 @@ services:
       - PRIVOXY_ENABLED=false
       - UNBOUND_ENABLED=false
       - QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE=1
+      - VERIFY_WEBUI_CERTIFICATE=False
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -318,6 +322,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.qbittorrent.middlewares=gzip
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -353,6 +359,8 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
+      # HTTP Services
+      - traefik.http.services.qbit_manage.loadbalancer.server.port=80
 
   # autobrr - torrent RSS downloader
   autobrr:
@@ -375,7 +383,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=oauth
+      - traefik.http.routers.autobrr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
@@ -449,7 +457,7 @@ services:
       - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.radarr.middlewares=oauth
+      - traefik.http.routers.radarr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -492,7 +500,7 @@ services:
       - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sonarr.middlewares=oauth
+      - traefik.http.routers.sonarr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -533,7 +541,7 @@ services:
       - $APPDIR:/app/server
       - $APPDIR/Tdarr/Configs:/app/configs
       - $APPDIR/Tdarr/Logs:/app/logs
-      - $DATADIR/media/Transcode:/temp
+      - $APPDIR/Tdarr/Temp:/temp
       - $DATADIR:/data
     labels:
       # HTTP Routers Auth Bypass
@@ -543,7 +551,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=websecure
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr.middlewares=oauth
+      - traefik.http.routers.tdarr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.tdarr-bypass.service=tdarr
       - traefik.http.routers.tdarr.service=tdarr
@@ -581,6 +589,8 @@ services:
       # HTTP Routers Auth
       - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.plex.middlewares=gzip
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
@@ -610,9 +620,11 @@ services:
       - $APPDIR/tautulli:/config:rw
       - $APPDIR/plex:/plex:ro
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.tautulli.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.services.tautulli.loadbalancer.server.port=8181
@@ -640,9 +652,11 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.overseerr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
       - traefik.http.services.overseerr.loadbalancer.server.port=5055
@@ -673,11 +687,11 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.metube.middlewares=oauth
+      - traefik.http.routers.metube.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.metube.service=metube
       - traefik.http.services.metube.loadbalancer.server.port=8081
@@ -715,11 +729,11 @@ services:
       - $APPDIR/calibre/cache:/cache
       - $DATADIR:/data
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.calibre.entrypoints=websecure
       - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.calibre.middlewares=oauth
+      - traefik.http.routers.calibre.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.calibre.service=calibre
       - traefik.http.services.calibre.loadbalancer.server.port=8080
@@ -751,9 +765,11 @@ services:
       - $DATADIR/media/books:/calibre-library
       - $DATADIR/media/books:/books
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.books.middlewares=gzip
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -784,11 +800,11 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.size=256MB
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.prometheus.middlewares=oauth
+      - traefik.http.routers.prometheus.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.prometheus.service=prometheus
       - traefik.http.services.prometheus.loadbalancer.server.port=9090
@@ -815,11 +831,11 @@ services:
       - $APPDIR/traefik/grafana/data:/var/lib/grafana
       - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.grafana.middlewares=oauth
+      - traefik.http.routers.grafana.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.grafana.service=grafana
       - traefik.http.services.grafana.loadbalancer.server.port=3000
@@ -846,11 +862,11 @@ services:
       - $APPDIR/traefik/loki/data:/loki
       - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.loki.entrypoints=websecure
       - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.loki.middlewares=oauth
+      - traefik.http.routers.loki.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.loki.service=loki
       - traefik.http.services.loki.loadbalancer.server.port=3100
@@ -883,7 +899,9 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      
+      # HTTP Services
+      - traefik.http.services.promtail.loadbalancer.server.port=80
+
   nodeexporter:
     image: prom/node-exporter:v1.6.1
     container_name: nodeexporter
@@ -928,11 +946,11 @@ services:
     volumes:
       - $APPDIR/notifiarr:/config
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=oauth
+      - traefik.http.routers.notifiarr.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
@@ -970,9 +988,11 @@ services:
     volumes:
       - $APPDIR/vaultwarden:/data
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.vaultwarden.middlewares=oauth,gzip
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80
