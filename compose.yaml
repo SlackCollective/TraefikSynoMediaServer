@@ -761,9 +761,7 @@ services:
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
     volumes:
       - $APPDIR/books:/config
-      - $DATADIR/imports:/cwa-book-ingest
       - $DATADIR/media/books:/calibre-library
-      - $DATADIR/media/books:/books
     labels:
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
