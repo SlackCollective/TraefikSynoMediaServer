@@ -117,13 +117,14 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
+    ports:
+      - 4181:4181
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
       - INSECURE_COOKIE=true
       - AUTH_HOST=oauth.$DOMAINNAME
-      - URL_PATH=/_oauth
-      - LOG_LEVEL=warn # set to trace while testing bypass rules
+      - LOG_LEVEL=error # set to trace while testing bypass rules
       - LOG_FORMAT=text
       - LIFETIME=2592000 # 30 days, in seconds
       - DEFAULT_ACTION=auth
@@ -190,7 +191,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # HTTP Services
@@ -222,12 +223,12 @@ services:
       - $DATADIR/torrents:/data/torrents:rw
       - $DATADIR/usenet:/data/usenet:rw
     labels:
-      # HTTP Routers Auth Bypass (for NZB360)
-      - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
-      - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
+      # HTTP Routers oAuth Bypass (for NZB360)
+      - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
+      - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=oauth
       # HTTP Services
@@ -260,12 +261,12 @@ services:
       - $APPDIR/sabnzbd:/config
       - $DATADIR/usenet:/data/usenet:rw
     labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
-      - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
+      # HTTP Routers oAuth Bypass
+      - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
+      - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=oauth
       # HTTP Services
@@ -371,12 +372,12 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
     labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.autobrr-bypass.entrypoints=websecure
-      - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # HTTP Routers Auth
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
+      # HTTP Routers oAuth Bypass
+      - traefik.http.routers.autobrr-bypass.entrypoints=websecure
+      - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # Middlewares
       - traefik.http.routers.autobrr.middlewares=oauth
       # HTTP Services
@@ -445,12 +446,12 @@ services:
       - $APPDIR/radarr:/config
       - $DATADIR:/data
     labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.radarr-bypass.entrypoints=websecure
-      - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
+      # HTTP Routers oAuth Bypass
+      - traefik.http.routers.radarr-bypass.entrypoints=websecure
+      - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       # Middlewares
       - traefik.http.routers.radarr.middlewares=oauth
       # HTTP Services
@@ -488,69 +489,18 @@ services:
       - $APPDIR/sonarr:/config
       - $DATADIR:/data
     labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.sonarr-bypass.entrypoints=websecure
-      - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
+      # HTTP Routers oAuth Bypass
+      - traefik.http.routers.sonarr-bypass.entrypoints=websecure
+      - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
       - traefik.http.services.sonarr.loadbalancer.server.port=8989
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-      
-  # Tdarr - Video conversion
-  tdarr:
-    image: haveagitgat/tdarr:latest
-    container_name: tdarr
-    restart: unless-stopped
-    logging: *loki-logging
-    networks:
-      brunswick:
-    ports:
-      - 8265:8265
-    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
-      - /dev/dri:/dev/dri
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - webUIPort=8265
-      - internalNode=true
-      - inContainer=true
-      - ffmpegVersion=6
-      - nodeID=TdarrNode
-      - THREADS_WORKER_INIT_TIMEOUT=200000
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - NVIDIA_VISIBLE_DEVICES=all
-    volumes:
-      - $APPDIR:/app/server
-      - $APPDIR/Tdarr/Configs:/app/configs
-      - $APPDIR/Tdarr/Logs:/app/logs
-      - $DATADIR/media/Transcode:/temp
-      - $DATADIR:/data
-    labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.tdarr-bypass.entrypoints=websecure
-      - traefik.http.routers.tdarr-bypass.rule=Host(`tdarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TDARR_API_KEY`) || Query(`apikey`, `$TDARR_API_KEY`))
-      # HTTP Routers Auth
-      - traefik.http.routers.tdarr.entrypoints=websecure
-      - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.tdarr.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.tdarr-bypass.service=tdarr
-      - traefik.http.routers.tdarr.service=tdarr
-      - traefik.http.services.tdarr.loadbalancer.server.port=8265
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -581,7 +531,7 @@ services:
       - ${DATADIR}/media:/data/media:rw
       - ${DATADIR}/media:/transcode
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers (Plex Auth)
       - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # HTTP Services
@@ -613,7 +563,7 @@ services:
       - $APPDIR/tautulli:/config:rw
       - $APPDIR/plex:/plex:ro
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers (Plex Auth)
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
       # HTTP Services
@@ -643,7 +593,7 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers (Plex Auth)
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # HTTP Services
@@ -676,7 +626,7 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
@@ -691,47 +641,6 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# BOOK LIBRARY MANAGEMENT
-  # Calibre – Content server
-  calibre:
-    image: lscr.io/linuxserver/calibre:latest
-    container_name: calibre
-    restart: unless-stopped
-    logging: *loki-logging
-    security_opt:
-      - seccomp:unconfined
-    networks:
-      brunswick:
-    ports:
-      - 8088:8080 #Calibre desktop gui
-    devices: # optional (used if Syno has Intel CPU, for HW transcoding)
-      - /dev/dri:/dev/dri
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - TITLE=BrunswickBooks
-      - CALIBRE_CACHE_DIRECTORY=/cache
-      - CLI_ARGS="--trusted-ips 192.168.1.0/24"
-      - DRINODE=/dev/dri/renderD128
-    volumes:
-      - $APPDIR/calibre:/config
-      - $APPDIR/calibre/cache:/cache
-      - $DATADIR:/data
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.calibre.entrypoints=websecure
-      - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.calibre.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.calibre.service=calibre
-      - traefik.http.services.calibre.loadbalancer.server.port=8080
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   # Calibre Web Automated - fork of Calibre-web that includes auto format conversion
   calibreweb:
     image: crocodilestick/calibre-web-automated:latest
@@ -748,15 +657,18 @@ services:
       - TZ=$TZ
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
+      - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
     volumes:
       - $APPDIR/books:/config
       - $DATADIR/imports:/cwa-book-ingest
       - $DATADIR/media/books:/calibre-library
-      - $DATADIR/media/books:/books
+      - $APPDIR/books/custom-files:/custom-cont-init.d:ro
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -787,7 +699,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.size=256MB
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
       # Middlewares
@@ -818,7 +730,7 @@ services:
       - $APPDIR/traefik/grafana/data:/var/lib/grafana
       - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
       # Middlewares
@@ -849,7 +761,7 @@ services:
       - $APPDIR/traefik/loki/data:/loki
       - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.loki.entrypoints=websecure
       - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
       # Middlewares
@@ -931,7 +843,7 @@ services:
     volumes:
       - $APPDIR/notifiarr:/config
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
@@ -973,7 +885,7 @@ services:
     volumes:
       - $APPDIR/vaultwarden:/data
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # HTTP Services
