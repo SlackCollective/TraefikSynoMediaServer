@@ -117,14 +117,13 @@ services:
     logging: *loki-logging
     networks:
       brunswick:
-    ports:
-      - 4181:4181
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
       - INSECURE_COOKIE=true
       - AUTH_HOST=oauth.$DOMAINNAME
-      - LOG_LEVEL=error # set to trace while testing bypass rules
+      - URL_PATH=/_oauth
+      - LOG_LEVEL=warn # set to trace while testing bypass rules
       - LOG_FORMAT=text
       - LIFETIME=2592000 # 30 days, in seconds
       - DEFAULT_ACTION=auth
@@ -191,7 +190,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # HTTP Services
@@ -223,12 +222,12 @@ services:
       - $DATADIR/torrents:/data/torrents:rw
       - $DATADIR/usenet:/data/usenet:rw
     labels:
-      # HTTP Routers
-      - traefik.http.routers.prowlarr.entrypoints=websecure
-      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
-      # HTTP Routers oAuth Bypass (for NZB360)
+      # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
+      # HTTP Routers Auth
+      - traefik.http.routers.prowlarr.entrypoints=websecure
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=oauth
       # HTTP Services
@@ -261,12 +260,12 @@ services:
       - $APPDIR/sabnzbd:/config
       - $DATADIR/usenet:/data/usenet:rw
     labels:
-      # HTTP Routers
-      - traefik.http.routers.sabnzbd.entrypoints=websecure
-      - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
-      # HTTP Routers oAuth Bypass
+      # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
+      # HTTP Routers Auth
+      - traefik.http.routers.sabnzbd.entrypoints=websecure
+      - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=oauth
       # HTTP Services
@@ -372,12 +371,12 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
     labels:
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.autobrr-bypass.entrypoints=websecure
+      - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # HTTP Routers Auth
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
-      # HTTP Routers oAuth Bypass
-      - traefik.http.routers.autobrr-bypass.entrypoints=websecure
-      - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # Middlewares
       - traefik.http.routers.autobrr.middlewares=oauth
       # HTTP Services
@@ -446,12 +445,12 @@ services:
       - $APPDIR/radarr:/config
       - $DATADIR:/data
     labels:
-      # HTTP Routers
-      - traefik.http.routers.radarr.entrypoints=websecure
-      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
-      # HTTP Routers oAuth Bypass
+      # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
+      # HTTP Routers Auth
+      - traefik.http.routers.radarr.entrypoints=websecure
+      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.radarr.middlewares=oauth
       # HTTP Services
@@ -489,12 +488,12 @@ services:
       - $APPDIR/sonarr:/config
       - $DATADIR:/data
     labels:
-      # HTTP Routers
-      - traefik.http.routers.sonarr.entrypoints=websecure
-      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
-      # HTTP Routers oAuth Bypass
+      # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
+      # HTTP Routers Auth
+      - traefik.http.routers.sonarr.entrypoints=websecure
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=oauth
       # HTTP Services
@@ -531,7 +530,7 @@ services:
       - ${DATADIR}/media:/data/media:rw
       - ${DATADIR}/media:/transcode
     labels:
-      # HTTP Routers (Plex Auth)
+      # HTTP Routers Auth
       - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # HTTP Services
@@ -563,7 +562,7 @@ services:
       - $APPDIR/tautulli:/config:rw
       - $APPDIR/plex:/plex:ro
     labels:
-      # HTTP Routers (Plex Auth)
+      # HTTP Routers Auth
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
       # HTTP Services
@@ -593,7 +592,7 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
-      # HTTP Routers (Plex Auth)
+      # HTTP Routers Auth
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # HTTP Services
@@ -626,7 +625,7 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
@@ -667,8 +666,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -699,7 +696,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.size=256MB
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
       # Middlewares
@@ -730,7 +727,7 @@ services:
       - $APPDIR/traefik/grafana/data:/var/lib/grafana
       - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
       # Middlewares
@@ -761,7 +758,7 @@ services:
       - $APPDIR/traefik/loki/data:/loki
       - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.loki.entrypoints=websecure
       - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
       # Middlewares
@@ -843,7 +840,7 @@ services:
     volumes:
       - $APPDIR/notifiarr:/config
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
@@ -885,7 +882,7 @@ services:
     volumes:
       - $APPDIR/vaultwarden:/data
     labels:
-      # HTTP Routers
+      # HTTP Routers Auth
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # HTTP Services
