@@ -513,17 +513,13 @@ services:
     container_name: plex
     restart: unless-stopped
     logging: *loki-logging
-    networks:
-      brunswick:
-    ports:
-      - 32400:32400
+    network_mode: host
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - VERSION=docker
       # - PLEX_CLAIM= #only needed when first claiming server
     volumes:
       - ${APPDIR}/plex:/config:rw
