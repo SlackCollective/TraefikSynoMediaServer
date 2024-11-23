@@ -526,12 +526,6 @@ services:
       - ${DATADIR}/media:/data/media:rw
       - ${DATADIR}/media:/transcode
     labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.plex.entrypoints=websecure
-      - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
-      # HTTP Services
-      - traefik.http.routers.plex.service=plex
-      - traefik.http.services.plex.loadbalancer.server.port=32400
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
