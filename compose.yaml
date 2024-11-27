@@ -28,6 +28,7 @@ services:
       - 89:80
       - 449:443
     command: # CLI arguments
+      # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
       - --global.checknewversion=true
       - --api.dashboard=true
@@ -44,6 +45,7 @@ services:
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.traefik.address=:8080
+      - --entrypoints.ping.address=:8081
       # Metrics Prometheus
       - --metrics=true
       - --metrics.prometheus=true
@@ -282,9 +284,14 @@ services:
   qbittorrent:
     image: ghcr.io/hotio/qbittorrent:latest
     container_name: qbittorrent
-    restart: unless-stopped
-    logging: *loki-logging
     hostname: qbittorrent.internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging: *loki-logging
     cap_add:
       - NET_ADMIN
     sysctls:
