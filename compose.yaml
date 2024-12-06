@@ -17,7 +17,7 @@ services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:v3.2
+    image: traefik:latest
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -46,12 +46,6 @@ services:
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.traefik.address=:8080
       - --entrypoints.ping.address=:8081
-      # Metrics Prometheus
-      - --metrics=true
-      - --metrics.prometheus=true
-      - --metrics.addinternals=true
-      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
-      - --metrics.prometheus.addServicesLabels=true
       # TLS
       # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
@@ -632,7 +626,7 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# BOOK LIBRARY MANAGEMENT
-  # Calibre Web Automated - fork of Calibre-web that includes auto format conversion
+  # Calibre Web Automated - fork of Calibre-web, includes auto conversion
   calibreweb:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
@@ -668,152 +662,6 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# SYSTEM MANAGEMENT/MONITORING
-  # Prometheus - metrics
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    container_name: prometheus
-    hostname: prometheus
-    restart: unless-stopped
-    logging: *loki-logging
-    user: "0:0"
-    depends_on:
-      - traefik
-    networks:
-      brunswick:
-    volumes:
-      - $APPDIR/traefik/prometheus/settings/:/etc/prometheus/
-      - $APPDIR/traefik/prometheus/data:/prometheus
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.size=256MB
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.prometheus.entrypoints=websecure
-      - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.prometheus.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.prometheus.service=prometheus
-      - traefik.http.services.prometheus.loadbalancer.server.port=9090
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Grafana - metrics visualised
-  grafana:
-    hostname: grafana
-    container_name: grafana
-    image: grafana/grafana:10.0.5
-    restart: unless-stopped
-    logging: *loki-logging
-    user: "0:0"
-    depends_on:
-      - traefik
-      - prometheus
-    networks:
-      brunswick:
-    volumes:
-      - $APPDIR/traefik/grafana/data:/var/lib/grafana
-      - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.grafana.entrypoints=websecure
-      - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.grafana.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.grafana.service=grafana
-      - traefik.http.services.grafana.loadbalancer.server.port=3000
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Loki - metrics gathering
-  loki:
-    hostname: loki
-    container_name: loki
-    image: grafana/loki:2.9.0
-    command: -config.file=/mnt/config/loki-config.yml
-    restart: unless-stopped
-    logging: *loki-logging
-    user: "0:0"
-    networks:
-      brunswick:
-    ports:
-      - 127.0.0.1:3100:3100
-    volumes:
-      - $APPDIR/traefik/loki/data:/loki
-      - $APPDIR/traefik/loki/settings/loki-config.yml:/mnt/config/loki-config.yml
-    labels:
-      # HTTP Routers Auth
-      - traefik.http.routers.loki.entrypoints=websecure
-      - traefik.http.routers.loki.rule=Host(`loki.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.loki.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.loki.service=loki
-      - traefik.http.services.loki.loadbalancer.server.port=3100
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # promtail - docker system metrics
-  promtail:
-    image: grafana/promtail:2.9.0
-    container_name: promtail
-    hostname: promtail
-    command: -config.file /mnt/config/promtail-config.yaml
-    restart: unless-stopped
-    logging: *loki-logging
-    user: "0:0"
-    networks:
-      brunswick:
-    volumes:
-      # logs for linux host only
-      - /var/log:/host/log
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /volume1/@docker/containers:/host/containers
-      - $APPDIR/traefik/promtail/settings/promtail-config.yaml:/mnt/config/promtail-config.yaml
-    labels:
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-      
-  nodeexporter:
-    image: prom/node-exporter:v1.6.1
-    container_name: nodeexporter
-    hostname: nodeexporter
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    restart: unless-stopped
-    logging: *loki-logging
-    networks:
-      brunswick:
-    expose:
-      - 9100
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    labels:
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-      
   # Notifiarr - update ARR profiles
   notifiarr:
     image: golift/notifiarr:latest
