@@ -7,17 +7,12 @@ networks:
     enable_ipv6: false
     driver_opts:
       parent: eth0
-    
-x-logging: &loki-logging
-  driver: json-file
-  options:
-    tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:latest
+    image: traefik:v3.2
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -110,7 +105,6 @@ services:
     image: thomseddon/traefik-forward-auth:latest
     container_name: oauth
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     environment:
@@ -148,7 +142,6 @@ services:
     image: oznu/cloudflare-ddns
     container_name: cloudflare
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     environment:
@@ -174,7 +167,6 @@ services:
     image: ghcr.io/organizr/organizr:latest
     container_name: organizr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -204,7 +196,6 @@ services:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -242,7 +233,6 @@ services:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -280,7 +270,6 @@ services:
     container_name: qbittorrent
     hostname: qbittorrent.internal
     restart: unless-stopped
-    logging: *loki-logging
     cap_add:
       - NET_ADMIN
     sysctls:
@@ -331,7 +320,6 @@ services:
     image: bobokun/qbit_manage
     container_name: qbitmanage
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     depends_on:
@@ -358,7 +346,6 @@ services:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -390,7 +377,6 @@ services:
     image: ghcr.io/autobrr/omegabrr:latest
     container_name: omegabrr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     depends_on:
@@ -421,7 +407,6 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -464,7 +449,6 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -508,7 +492,6 @@ services:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     restart: unless-stopped
-    logging: *loki-logging
     network_mode: host
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
@@ -534,7 +517,6 @@ services:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -565,7 +547,6 @@ services:
     image: lscr.io/linuxserver/overseerr:latest
     container_name: overseerr
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -596,7 +577,6 @@ services:
     image: ghcr.io/alexta69/metube
     container_name: metube
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -631,7 +611,6 @@ services:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -668,7 +647,6 @@ services:
     container_name: notifiarr
     hostname: notifiarr #must be set, can be anything
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     ports:
@@ -700,7 +678,6 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: unless-stopped
-    logging: *loki-logging
     networks:
       brunswick:
     environment:
