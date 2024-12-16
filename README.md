@@ -22,6 +22,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### DOWNLOADERS
 * sabnzbd
 * qbittorrent (hotio, with vpn support)
+* MeTube (download YouTube videos)
 ### TORRENT MANAGEMENT
 * qbit-manage
 * autobrr
@@ -32,16 +33,12 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### HOME THEATRE
 * plex
 * tautulli
+* overseerr (allow users to request media)
 ### BOOKS
 * calibre-web
 ### PASSWORD MANAGEMENT
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
-* promtail
-* prometheus
-* loki
-* grafana
-* node-exporter
 * notifiarr
 
 Requires docker-compose.yaml and .env file in the same directory.
