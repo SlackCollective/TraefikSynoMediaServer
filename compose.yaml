@@ -156,6 +156,7 @@ services:
       - DNS_SERVER=1.1.1.1
       - CRON="@daily"
     labels:
+      - dozzle ## Log viewer
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
@@ -178,6 +179,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
@@ -209,6 +211,7 @@ services:
       - $DATADIR/torrents:/data/torrents:rw
       - $DATADIR/usenet:/data/usenet:rw
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
@@ -246,6 +249,7 @@ services:
       - $APPDIR/sabnzbd:/config
       - $DATADIR/usenet:/data/usenet:rw
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
@@ -303,6 +307,7 @@ services:
       - $DATADIR/torrents:/data/torrents:rw
       - $APPDIR/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
@@ -335,6 +340,7 @@ services:
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
       - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
+      - dozzle ## Log viewer
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -354,6 +360,7 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.autobrr-bypass.entrypoints=websecure
       - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
@@ -390,6 +397,7 @@ services:
     volumes:
       - $APPDIR/omegabrr:/config
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.omegabrr.entrypoints=websecure
       # HTTP Services
@@ -426,6 +434,7 @@ services:
       - $APPDIR/radarr:/config
       - $DATADIR:/data
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
@@ -468,6 +477,7 @@ services:
       - $APPDIR/sonarr:/config
       - $DATADIR:/data
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
@@ -505,6 +515,7 @@ services:
       - ${DATADIR}/media:/data/media:rw
       - ${DATADIR}/media:/transcode
     labels:
+      - dozzle ## Log viewer
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -530,6 +541,7 @@ services:
       - $APPDIR/tautulli:/config:rw
       - $APPDIR/plex:/plex:ro
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
@@ -559,6 +571,7 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
@@ -591,6 +604,7 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
@@ -628,6 +642,7 @@ services:
       - $DATADIR/media/books:/calibre-library
       - $APPDIR/books/custom-files:/custom-cont-init.d:ro
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
@@ -658,6 +673,7 @@ services:
     volumes:
       - $APPDIR/notifiarr:/config
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
@@ -682,7 +698,12 @@ services:
     ports:
       - 9999:8080
     environment:
-      - DOZZLE_LEVEL=warn
+      - DOZZLE_BASE=/
+      - DOZZLE_LEVEL=error
+      - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
+      - DOZZLE_TAILSIZE=300
+      - DOZZLE_ENABLE_ACTIONS=true
+      - TZ=${TZ}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
@@ -727,6 +748,7 @@ services:
     volumes:
       - $APPDIR/vaultwarden:/data
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
