@@ -672,6 +672,34 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # Dozzle - log viewer
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    networks:
+      brunswick:
+    ports:
+      - 9999:8080
+    environment:
+      - DOZZLE_LEVEL=warn
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # HTTP Routers Auth
+      - traefik.http.routers.dozzle.entrypoints=websecure
+      - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.dozzle.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.dozzle.service=dozzle
+      - traefik.http.services.dozzle.loadbalancer.server.port=8080
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+      
   ############################# SECURITY/PASSWORD MANAGEMENT
   # Vaultwarden - Locally-hosted Bitwarden
   vaultwarden:
