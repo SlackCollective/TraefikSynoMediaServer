@@ -22,6 +22,8 @@ services:
     ports:
       - 89:80
       - 449:443
+    extra_hosts:
+      - host.docker.internal:172.17.0.1 # define internal ip; helps traefik to resolve containers running in host network mode
     command: # CLI arguments
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
@@ -39,10 +41,7 @@ services:
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
-      - --entrypoints.traefik.address=:8080
-      - --entrypoints.ping.address=:8081
       # TLS
-      # - --serversTransport.insecureSkipVerify=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
@@ -54,7 +53,7 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
-      # - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$CLOUDFLARE_IPS,$LOCAL_IPS
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
       # Logging
@@ -65,11 +64,6 @@ services:
       - --log.maxAge=3
       - --log.maxbackups=3
       - --log.filepath=/logs/traefik.log
-      - --accesslog=true
-      - --accesslog.addinternals=true
-      - --accesslog.filepath=/logs/access.log
-      - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      - --accessLog.bufferingSize=60 # Configuring a buffer of 60 lines
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 10s
@@ -89,7 +83,7 @@ services:
     labels:
       # HTTP Routers
       - traefik.http.routers.dashboard.entrypoints=websecure
-      - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
@@ -156,7 +150,6 @@ services:
       - DNS_SERVER=1.1.1.1
       - CRON="@daily"
     labels:
-      - dozzle ## Log viewer
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
@@ -360,7 +353,6 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.autobrr-bypass.entrypoints=websecure
       - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
@@ -571,7 +563,6 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
@@ -604,7 +595,6 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers Auth
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
@@ -642,7 +632,6 @@ services:
       - $DATADIR/media/books:/calibre-library
       - $APPDIR/books/custom-files:/custom-cont-init.d:ro
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
