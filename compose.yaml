@@ -304,9 +304,15 @@ services:
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
+      # appropriate header changes
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options=SAMEORIGIN
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer=
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Origin=
+      - traefik.http.routers.qbittorrent.middlewares=qb-headers
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      - traefik.http.services.qbittorrent.loadbalancer.passhostheader=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -528,10 +534,9 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DEBUG=no
     volumes:
       - $APPDIR/tautulli:/config:rw
-      - $APPDIR/plex:/plex:ro
+      - $APPDIR/plex/Library/Application Support/Plex Media Server/Logs:/plexlogs
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth
