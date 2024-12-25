@@ -25,6 +25,7 @@ services:
     extra_hosts:
       - host.docker.internal:172.17.0.1 # define internal ip; helps traefik to resolve containers running in host network mode
     command: # CLI arguments
+      - --experimental.fastProxy
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
       - --global.checknewversion=true
