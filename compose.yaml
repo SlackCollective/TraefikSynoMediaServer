@@ -15,6 +15,12 @@ services:
     image: traefik:v3.2
     container_name: traefik
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -22,9 +28,8 @@ services:
     ports:
       - 89:80
       - 449:443
-      # - 8080:8080
     command: # CLI arguments
-      - --experimental.fastProxy
+      - --experimental.fastProxy=true
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
       - --global.checknewversion=true
@@ -64,12 +69,6 @@ services:
       - --log.maxAge=3
       - --log.maxbackups=3
       - --log.filepath=/logs/traefik.log
-    healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $DOCKERDIR/certs/acme.json:/acme.json
@@ -150,11 +149,12 @@ services:
       - DNS_SERVER=1.1.1.1
       - CRON="@daily"
     labels:
-      # HTTP Routers Auth Bypass
+      # HTTP Routers
       - traefik.http.routers.cloudflare.entrypoints=websecure
       # HTTP Services
       - traefik.http.routers.cloudflare.service=cloudflare
       - traefik.http.services.cloudflare.loadbalancer.server.port=80
+      ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
@@ -168,8 +168,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 3001:80
     volumes:
       - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
@@ -178,7 +176,7 @@ services:
       - TZ=$TZ
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # HTTP Services
@@ -196,10 +194,14 @@ services:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9696/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       brunswick:
-    ports:
-      - 9696:9696
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -213,7 +215,7 @@ services:
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
@@ -236,8 +238,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 9998:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -251,7 +251,7 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
@@ -281,8 +281,6 @@ services:
       - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
       brunswick:
-    ports:
-      - 9997:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -325,13 +323,13 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    depends_on:
-      qbittorrent:
-        condition: service_started
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - QBT_SCHEDULE=360 # minutes - default is 1440 (once daily)
+      - QBT_STARTUP_DELAY=30 # seconds
+      - QBT_SKIP_QB_VERSION_CHECK=true
       - VERIFY_WEBUI_CERTIFICATE=False
     volumes:
       - $APPDIR/qbitmanage:/config:rw
@@ -339,7 +337,7 @@ services:
       - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth Bypass
+      # HTTP Routers
       - traefik.http.routers.qbitmanage.entrypoints=websecure
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
@@ -357,8 +355,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 7474:7474
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -366,7 +362,7 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.autobrr-bypass.entrypoints=websecure
       - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
@@ -390,9 +386,9 @@ services:
       brunswick:
     depends_on:
       sonarr:
-        condition: service_started
+        condition: service_healthy
       radarr:
-        condition: service_started
+        condition: service_healthy
     user: $PUID:$PGID
     environment:
       - TZ=$TZ
@@ -417,17 +413,21 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7878/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       brunswick:
-    ports:
-      - 7878:7878
     depends_on:
       sabnzbd:
         condition: service_started
       qbittorrent:
         condition: service_started
       prowlarr:
-        condition: service_started
+        condition: service_healthy
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -440,7 +440,7 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
@@ -460,17 +460,21 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8989/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       brunswick:
-    ports:
-      - 8989:8989
     depends_on:
       sabnzbd:
         condition: service_started
       qbittorrent:
         condition: service_started
       prowlarr:
-        condition: service_started
+        condition: service_healthy
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -483,7 +487,7 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
@@ -521,7 +525,7 @@ services:
       - ${DATADIR}/media:/transcode
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth Bypass
+      # HTTP Routers
       - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # HTTP Services
@@ -541,8 +545,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 8181:8181
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -552,7 +554,7 @@ services:
       - $APPDIR/plex/Library/Application Support/Plex Media Server/Logs:/plexlogs
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
       # HTTP Services
@@ -571,8 +573,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 5055:5055
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -581,7 +581,7 @@ services:
       - $APPDIR/overseerr:/config
       - $DATADIR/media:/data/media
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # HTTP Services
@@ -601,8 +601,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 8084:8081
     environment:
       - UID=$PUID
       - GID=$PGID
@@ -613,7 +611,7 @@ services:
       - $DATADIR/media/youtube:/downloads
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.metube.entrypoints=websecure
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
@@ -635,8 +633,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 8083:8083
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -671,8 +667,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 5454:5454
     environment:
       - TZ=$TZ
       - DN_API_KEY=$NOTIFIARR
@@ -681,7 +675,7 @@ services:
       - $APPDIR/notifiarr:/config
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
@@ -702,8 +696,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-    ports:
-      - 9999:8080
     environment:
       - DOZZLE_BASE=/
       - DOZZLE_LEVEL=error
@@ -714,7 +706,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.dozzle.entrypoints=websecure
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
@@ -756,7 +748,7 @@ services:
       - $APPDIR/vaultwarden:/data
     labels:
       - dozzle ## Log viewer
-      # HTTP Routers Auth
+      # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # HTTP Services
