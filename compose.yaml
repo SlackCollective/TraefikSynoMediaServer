@@ -175,7 +175,6 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
@@ -196,10 +195,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/ping || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 15s
+      timeout: 3s
       retries: 3
-      start_period: 40s
+      start_period: 15s
     networks:
       brunswick:
     environment:
@@ -389,6 +388,8 @@ services:
         condition: service_healthy
       radarr:
         condition: service_healthy
+      prowlarr:
+        condition: service_healthy
     user: $PUID:$PGID
     environment:
       - TZ=$TZ
@@ -415,10 +416,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:7878/ping || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 15s
+      timeout: 3s
       retries: 3
-      start_period: 40s
+      start_period: 15s
     networks:
       brunswick:
     depends_on:
@@ -462,10 +463,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8989/ping || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 15s
+      timeout: 3s
       retries: 3
-      start_period: 40s
+      start_period: 15s
     networks:
       brunswick:
     depends_on:
