@@ -322,6 +322,11 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+    depends_on:
+      sonarr:
+        condition: service_healthy
+      radarr:
+        condition: service_healthy
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -354,6 +359,13 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+    depends_on:
+      sonarr:
+        condition: service_healthy
+      radarr:
+        condition: service_healthy
+      prowlarr:
+        condition: service_healthy
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -544,6 +556,9 @@ services:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
     restart: unless-stopped
+    depends_on:
+      plex:
+        condition: service_started
     networks:
       brunswick:
     environment:
