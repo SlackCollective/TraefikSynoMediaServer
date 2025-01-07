@@ -168,6 +168,7 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+        ipv4_address: 172.28.6.3
     volumes:
       - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
@@ -269,7 +270,6 @@ services:
   qbittorrent:
     image: ghcr.io/hotio/qbittorrent:latest
     container_name: qbittorrent
-    hostname: qbittorrent.internal
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
@@ -288,10 +288,9 @@ services:
       - VPN_ENABLED=true
       - VPN_CONF=wg0-fix
       - VPN_PROVIDER=generic
-      - VPN_LAN_NETWORK=192.168.1.0/24
       - VPN_LAN_LEAK_ENABLED=false
       - VPN_AUTO_PORT_FORWARD=51007
-      - VPN_KEEP_LOCAL_DNS=false
+      - VPN_KEEP_LOCAL_DNS=true
       - VPN_FIREWALL_TYPE=auto
       - VPN_HEALTHCHECK_ENABLED=true
       - PRIVOXY_ENABLED=false
@@ -308,7 +307,13 @@ services:
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
+      - traefik.http.services.qbittorrent.loadbalancer.passhostheader=false
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      # appropriate header changes
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options=SAMEORIGIN
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer=
+      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Origin=
+      - traefik.http.routers.qbittorrent.middlewares=qb-headers
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
