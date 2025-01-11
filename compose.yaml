@@ -287,10 +287,11 @@ services:
       - VPN_ENABLED=true
       - VPN_CONF=wg0-fix
       - VPN_PROVIDER=generic
+      - VPN_LAN_NETWORK=192.168.1.0/24
       - VPN_LAN_LEAK_ENABLED=false
       - VPN_AUTO_PORT_FORWARD=51007
       - VPN_KEEP_LOCAL_DNS=true
-      - VPN_FIREWALL_TYPE=auto
+      - VPN_FIREWALL_TYPE=legacy
       - VPN_HEALTHCHECK_ENABLED=true
       - PRIVOXY_ENABLED=false
       - UNBOUND_ENABLED=false
