@@ -168,7 +168,6 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
-        ipv4_address: 172.28.6.3
     volumes:
       - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
@@ -309,6 +308,7 @@ services:
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.passhostheader=false
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      - traefik.docker.network=brunswick
       # appropriate header changes
       - traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options=SAMEORIGIN
       - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer=
