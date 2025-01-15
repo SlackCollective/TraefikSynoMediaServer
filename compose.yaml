@@ -307,13 +307,11 @@ services:
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.services.qbittorrent.loadbalancer.passhostheader=false
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
       - traefik.docker.network=brunswick
       # appropriate header changes
-      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options=SAMEORIGIN
-      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer=
-      - traefik.http.middlewares.qb-headers.headers.customrequestheaders.Origin=
+      - traefik.http.middlewares.qb-headers.headers.customFrameOptionsValue="sameorigin"
+      - traefik.http.middlewares.qb-headers.headers.contentSecurityPolicy="frame-ancestors https:/brunswickmedia.co.za"
       - traefik.http.routers.qbittorrent.middlewares=qb-headers
       ## Updating and notifications
       - org.hotio.pullio.notify=true
