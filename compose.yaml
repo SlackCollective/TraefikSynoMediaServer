@@ -287,7 +287,7 @@ services:
       - VPN_ENABLED=true
       - VPN_CONF=wg0-fix
       - VPN_PROVIDER=generic
-      - VPN_LAN_NETWORK=192.168.1.0/24
+      - VPN_LAN_NETWORK=192.168.1.0/24 # docker network, adding LAN network in bQit
       - VPN_LAN_LEAK_ENABLED=false
       - VPN_AUTO_PORT_FORWARD=51007
       - VPN_KEEP_LOCAL_DNS=true
@@ -308,11 +308,6 @@ services:
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
-      - traefik.docker.network=brunswick
-      # appropriate header changes
-      - traefik.http.middlewares.qb-headers.headers.customFrameOptionsValue="sameorigin"
-      - traefik.http.middlewares.qb-headers.headers.contentSecurityPolicy="frame-ancestors https:/brunswickmedia.co.za"
-      - traefik.http.routers.qbittorrent.middlewares=qb-headers
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
