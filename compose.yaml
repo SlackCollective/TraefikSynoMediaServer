@@ -279,19 +279,22 @@ services:
       - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
       brunswick:
+    ports:
+      - 9997:8080
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
       - WEBUI_PORTS=8080/tcp,8080/udp
       - VPN_ENABLED=true
+      - VPN_CLIENT=wireguard
       - VPN_CONF=wg0-fix
       - VPN_PROVIDER=generic
       - VPN_LAN_NETWORK=192.168.1.0/24 # docker network, adding LAN network in bQit
       - VPN_LAN_LEAK_ENABLED=false
       - VPN_AUTO_PORT_FORWARD=51007
       - VPN_KEEP_LOCAL_DNS=true
-      - VPN_FIREWALL_TYPE=legacy
+      - VPN_FIREWALL_TYPE=auto
       - VPN_HEALTHCHECK_ENABLED=true
       - PRIVOXY_ENABLED=false
       - UNBOUND_ENABLED=false
