@@ -28,6 +28,7 @@ services:
     ports:
       - 89:80
       - 449:443
+      - 8080:8080
     command: # CLI arguments
       - --experimental.fastProxy=true
       # Providers, Entrypoints, telemetry
@@ -87,6 +88,7 @@ services:
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal  
+      - traefik.http.services.api.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
