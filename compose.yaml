@@ -12,7 +12,7 @@ services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:v3.2
+    image: traefik:v3.3
     container_name: traefik
     restart: unless-stopped
     healthcheck:
@@ -29,7 +29,6 @@ services:
       - 89:80
       - 449:443
     command: # CLI arguments
-      - --experimental.fastProxy=true
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
       - --global.checknewversion=true
@@ -56,7 +55,7 @@ services:
       - --certificatesresolvers.cloudflare.acme.storage=/acme.json
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
-      - --certificatesResolvers.cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
+      - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
