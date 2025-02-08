@@ -28,6 +28,7 @@ services:
     ports:
       - 89:80
       - 449:443
+      - 8081:8081
     command: # CLI arguments
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
@@ -35,6 +36,7 @@ services:
       - --api.dashboard=true
       - --api.insecure=false
       - --ping=true
+      - --entrypoints.ping.address=:8081
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
@@ -85,7 +87,7 @@ services:
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
-      - traefik.http.routers.dashboard.service=api@internal  
+      - traefik.http.routers.dashboard.service=api@internal
       - traefik.http.services.api.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
@@ -307,7 +309,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=oauth
+      # - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -649,6 +651,12 @@ services:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8083 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       brunswick:
     environment:
