@@ -28,7 +28,6 @@ services:
     ports:
       - 89:80
       - 449:443
-      - 8081:8081
     command: # CLI arguments
       # Providers, Entrypoints, telemetry
       - --global.sendAnonymousUsage=true
@@ -36,7 +35,6 @@ services:
       - --api.dashboard=true
       - --api.insecure=false
       - --ping=true
-      - --entrypoints.ping.address=:8081
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
