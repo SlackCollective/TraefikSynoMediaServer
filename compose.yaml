@@ -29,12 +29,18 @@ services:
       - 89:80
       - 449:443
     command: # CLI arguments
-      # Providers, Entrypoints, telemetry
+      # Logs, Telemetry
       - --global.sendAnonymousUsage=true
       - --global.checknewversion=true
       - --api.dashboard=true
       - --api.insecure=false
       - --ping=true
+      - --log.level=info
+      - --log.filePath=logs/traefik.log
+      - --log.format=json    
+      - --accesslog.filePath=logs/access.txt
+      - --accesslog.format=json
+      # Providers, Entrypoints
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
@@ -60,14 +66,6 @@ services:
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
-      # Logging
-      - --log=true
-      - --log.compress=true
-      - --log.level=WARN # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      - --log.maxSize=1
-      - --log.maxAge=3
-      - --log.maxbackups=3
-      - --log.filepath=/logs/traefik.log
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $DOCKERDIR/certs/acme.json:/acme.json
@@ -79,7 +77,7 @@ services:
       - CF_API_KEY=$CF_MASTERAPI
       - DOMAINNAME # Passing the domain name to use the variable in rules.
     labels:
-      # HTTP Routers
+      # HTTP Routers - Dashboard
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
