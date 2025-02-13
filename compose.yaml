@@ -323,10 +323,8 @@ services:
     networks:
       brunswick:
     depends_on:
-      sonarr:
-        condition: service_healthy
-      radarr:
-        condition: service_healthy
+      qbittorrent:
+        condition: service_started
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -360,12 +358,8 @@ services:
     networks:
       brunswick:
     depends_on:
-      sonarr:
-        condition: service_healthy
-      radarr:
-        condition: service_healthy
-      prowlarr:
-        condition: service_healthy
+      qbittorrent:
+        condition: service_started
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -396,12 +390,8 @@ services:
     networks:
       brunswick:
     depends_on:
-      sonarr:
-        condition: service_healthy
-      radarr:
-        condition: service_healthy
-      prowlarr:
-        condition: service_healthy
+      qbittorrent:
+        condition: service_started
     user: $PUID:$PGID
     environment:
       - TZ=$TZ
@@ -589,6 +579,9 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+    depends_on:
+      plex:
+        condition: service_started
     environment:
       - PUID=$PUID
       - PGID=$PGID
