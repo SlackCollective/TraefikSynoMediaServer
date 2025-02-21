@@ -7,6 +7,13 @@ networks:
     enable_ipv6: false
     driver_opts:
       parent: eth0
+  socket:
+    name: socket
+    external: true
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      parent: eth0
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
@@ -23,8 +30,12 @@ services:
       start_period: 5s
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      socket:
+        condition: service_started
     networks:
       brunswick:
+      socket:
     ports:
       - 89:80
       - 449:443
@@ -42,10 +53,10 @@ services:
       - --accesslog.format=json
       # Providers, Entrypoints
       - --providers.docker=true
-      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      # - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
-      - --providers.docker.network=brunswick
+      - --providers.docker.network=socket # Change to your container network, if not using socket
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
@@ -67,7 +78,6 @@ services:
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
@@ -90,6 +100,24 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # Socket proxy - avoid granting WAN access to docker.sock
+  socket:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: socket
+    restart: unless-stopped
+    networks:
+      socket:
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      - CONTAINERS=1 #optional
+      - DISABLE_IPV6=1 #optional
+      - EVENTS=1 #optional
+      - INFO=1 #optional
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # Google OAuth - Single Sign On using OAuth 2.0
   oauth:
@@ -732,6 +760,7 @@ services:
     restart: unless-stopped
     networks:
       brunswick:
+      socket:
     environment:
       - DOZZLE_BASE=/
       - DOZZLE_LEVEL=error
@@ -739,8 +768,7 @@ services:
       - DOZZLE_TAILSIZE=300
       - DOZZLE_ENABLE_ACTIONS=true
       - TZ=${TZ}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
     labels:
       # HTTP Routers
       - traefik.http.routers.dozzle.entrypoints=websecure
