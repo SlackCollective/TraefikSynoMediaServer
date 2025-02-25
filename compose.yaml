@@ -131,7 +131,7 @@ services:
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
-      - INSECURE_COOKIE=true
+      # - INSECURE_COOKIE=true
       - AUTH_HOST=oauth.$DOMAINNAME
       - URL_PATH=/_oauth
       - LOG_LEVEL=warn # set to trace while testing bypass rules
