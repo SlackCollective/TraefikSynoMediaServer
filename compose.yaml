@@ -1,19 +1,9 @@
 ########################### NETWORKS
 networks:
-  brunswick:
-    name: brunswick
-    external: true
+  mediaserver:
     driver: bridge
-    enable_ipv6: false
-    driver_opts:
-      parent: eth0
-  socket:
-    name: socket
-    external: true
+  socket-proxy:
     driver: bridge
-    enable_ipv6: false
-    driver_opts:
-      parent: eth0
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
@@ -34,8 +24,8 @@ services:
       socket:
         condition: service_started
     networks:
-      brunswick:
-      socket:
+      mediaserver:
+      socket-proxy:
     ports:
       - 89:80
       - 449:443
@@ -56,7 +46,7 @@ services:
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
-      - --providers.docker.network=socket # Change to your container network, if not using socket
+      - --providers.docker.network=socket-proxy # Change to your container network, if not using socket
       - --entrypoints.web.address=:80
       # Allow these IPs to set the X-Forwarded-* headers
       - --entryPoints.web.forwardedHeaders.trustedIPs=$LOCAL_IPS
@@ -109,7 +99,7 @@ services:
     container_name: socket
     restart: unless-stopped
     networks:
-      socket:
+      socket-proxy:
     read_only: true
     tmpfs:
       - /run
@@ -127,7 +117,7 @@ services:
     container_name: oauth
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
@@ -164,7 +154,7 @@ services:
     container_name: cloudflare
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -195,7 +185,7 @@ services:
     container_name: organizr
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     volumes:
       - $APPDIR/organizr:/config # Make sure your local config directory exists
     environment:
@@ -228,7 +218,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -264,7 +254,7 @@ services:
     container_name: sabnzbd
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -306,7 +296,7 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -351,10 +341,10 @@ services:
     container_name: qbitmanage
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
-      qbittorrent:
-        condition: service_started
+      sonarr: # artificial delay
+        condition: service_healthy
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -386,10 +376,10 @@ services:
     container_name: autobrr
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
-      qbittorrent:
-        condition: service_started
+      sonarr: # artificial delay
+        condition: service_healthy
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -418,10 +408,10 @@ services:
     container_name: omegabrr
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
-      qbittorrent:
-        condition: service_started
+      sonarr: # artificial delay
+        condition: service_healthy
     user: $PUID:$PGID
     environment:
       - TZ=$TZ
@@ -453,7 +443,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
       sabnzbd:
         condition: service_started
@@ -500,7 +490,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
       sabnzbd:
         condition: service_started
@@ -542,7 +532,7 @@ services:
     container_name: plex
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     ports:
       - 32400:32400
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
@@ -577,7 +567,7 @@ services:
     container_name: imagemaid
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - UID=$PUID
       - GID=$PGID
@@ -601,7 +591,7 @@ services:
       plex:
         condition: service_started
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -629,7 +619,7 @@ services:
     container_name: overseerr
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     depends_on:
       plex:
         condition: service_started
@@ -660,7 +650,7 @@ services:
     container_name: metube
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - UID=$PUID
       - GID=$PGID
@@ -698,7 +688,7 @@ services:
       retries: 3
       start_period: 90s
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -732,7 +722,7 @@ services:
     hostname: notifiarr #must be set, can be anything
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - TZ=$TZ
       - DN_API_KEY=$NOTIFIARR
@@ -761,8 +751,8 @@ services:
     container_name: dozzle
     restart: unless-stopped
     networks:
-      brunswick:
-      socket:
+      mediaserver:
+      socket-proxy:
     environment:
       - DOZZLE_BASE=/
       - DOZZLE_LEVEL=error
@@ -793,7 +783,7 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     networks:
-      brunswick:
+      mediaserver:
     environment:
       - PUID=$PUID
       - PGID=$PGID
