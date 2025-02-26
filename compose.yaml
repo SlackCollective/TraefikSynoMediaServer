@@ -38,9 +38,7 @@ services:
       - --ping=true
       - --log.level=info
       - --log.filePath=logs/traefik.log
-      - --log.format=json    
       - --accesslog.filePath=logs/access.txt
-      - --accesslog.format=json
       # Providers, Entrypoints
       - --providers.docker=true
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
@@ -121,11 +119,10 @@ services:
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
-      # - INSECURE_COOKIE=true
+      # - INSECURE_COOKIE=true # apparently needed for https entrypoints
       - AUTH_HOST=oauth.$DOMAINNAME
       - URL_PATH=/_oauth
       - LOG_LEVEL=warn # set to trace while testing bypass rules
-      - LOG_FORMAT=text
       - LIFETIME=2592000 # 30 days, in seconds
       - DEFAULT_ACTION=auth
       - DEFAULT_PROVIDER=google
@@ -156,8 +153,6 @@ services:
     networks:
       mediaserver:
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
       - TZ=$TZ
       - API_KEY=$CF_API_KEY
       - ZONE=$DOMAINNAME
