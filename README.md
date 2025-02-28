@@ -36,6 +36,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * imagemaid
 * tautulli
 * overseerr (allow users to request media)
+* stash (index downloaded media outside of Plex and the *arr's)
 ### BOOKS
 * calibre-web
 ### PASSWORD MANAGEMENT
