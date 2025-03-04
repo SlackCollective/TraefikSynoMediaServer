@@ -313,6 +313,7 @@ services:
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
+      - $DATADIR/media/youtube:/stashmetube
       - $APPDIR/qbittorrent/mam/cookies.sh:/etc/cont-init.d/99-mam-cookies
     labels:
       - dozzle ## Log viewer
@@ -664,45 +665,6 @@ services:
       # HTTP Services
       - traefik.http.routers.metube.service=metube
       - traefik.http.services.metube.loadbalancer.server.port=8081
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Stash - downloaded video indexer
-  stash:
-    image: stashapp/stash:latest
-    container_name: stash
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    ports:
-      - 9999:9999
-    environment:
-      - STASH_STASH=/data/
-      - STASH_GENERATED=/generated/
-      - STASH_METADATA=/metadata/
-      - STASH_CACHE=/cache/
-      - STASH_PORT=9999
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - $APPDIR/stash:/root/.stash # Keep configs, scrapers, and plugins here.
-      - $DATADIR/media/stash:/data # Point this at your collection.
-      - $APPDIR/stash/metadata:/metadata # Stash's metadata lives
-      - $APPDIR/stash/cache:/cache # Any other cache content.
-      - $APPDIR/stash/blobs:/blobs # binary blob data (scene covers, images)
-      - $APPDIR/stash/generated:/generated # generated content (screenshots,previews,transcodes,sprites)
-    labels:
-      - dozzle ## Log viewer
-      # HTTP Routers
-      - traefik.http.routers.stash.entrypoints=websecure
-      - traefik.http.routers.stash.rule=Host(`stash.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.stash.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.stash.service=stash
-      - traefik.http.services.stash.loadbalancer.server.port=9999
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
