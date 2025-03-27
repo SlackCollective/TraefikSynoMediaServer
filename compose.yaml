@@ -9,7 +9,7 @@ services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3
     container_name: traefik
     restart: unless-stopped
     healthcheck:
@@ -119,7 +119,7 @@ services:
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
-      # - INSECURE_COOKIE=true # apparently needed for https entrypoints
+      - INSECURE_COOKIE=true # apparently needed for http entrypoints
       - AUTH_HOST=oauth.$DOMAINNAME
       - URL_PATH=/_oauth
       - LOG_LEVEL=warn # set to trace while testing bypass rules
@@ -321,7 +321,6 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      # - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
