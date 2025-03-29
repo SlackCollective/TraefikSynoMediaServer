@@ -51,6 +51,25 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
+      # Metrics Prometheus
+      - --metrics=true
+      - --metrics.prometheus=true
+      - --metrics.addinternals=true
+      - --metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000
+      - --metrics.prometheus.addServicesLabels=true
+      # Logging
+      - --log=true
+      - --log.compress=true
+      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+      - --log.maxSize=1
+      - --log.maxAge=3
+      - --log.maxbackups=3
+      - --log.filepath=/logs/traefik.log
+      - --accesslog=true
+      - --accesslog.addinternals=true
+      - --accesslog.filepath=/logs/access.log
+      - --accessLog.filters.statusCodes=204-299,400-499,500-599
+      - --accessLog.bufferingSize=60 # Configuring a buffer of 60 lines
       # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       - --entrypoints.websecure.http.tls=true
@@ -321,6 +340,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
+      - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -710,6 +730,68 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# SYSTEM MANAGEMENT/MONITORING
+  # Prometheus - metrics
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    user: "0:0"
+    depends_on:
+      - traefik
+    networks:
+      mediaserver:
+    volumes:
+      - $APPDIR/traefik/prometheus/settings/:/etc/prometheus/
+      - $APPDIR/traefik/prometheus/data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.size=256MB
+    labels:
+      # HTTP Routers Auth
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.prometheus.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.prometheus.service=prometheus
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # Grafana - metrics visualised
+  grafana:
+    hostname: grafana
+    container_name: grafana
+    image: grafana/grafana:10.0.5
+    restart: unless-stopped
+    user: "0:0"
+    depends_on:
+      - prometheus
+    networks:
+      mediaserver:
+    volumes:
+      - $APPDIR/traefik/grafana/data:/var/lib/grafana
+      - $APPDIR/traefik/grafana/settings:/etc/grafana/provisioning
+    labels:
+      # HTTP Routers Auth
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.rule=Host(`grafana.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.grafana.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.grafana.service=grafana
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+      
   # Notifiarr - update ARR profiles
   notifiarr:
     image: golift/notifiarr:latest
