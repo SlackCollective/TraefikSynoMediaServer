@@ -863,18 +863,11 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOMAIN=https://vaultwarden.$DOMAINNAME
       - PUSH_ENABLED=true
       - PUSH_INSTALLATION_ID=$PUSH_INSTALLATION_ID
       - PUSH_INSTALLATION_KEY=$PUSH_INSTALLATION_KEY
       - LOG_LEVEL=error
       - EXTENDED_LOGGING=false
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_FROM=vaultwarden@$DOMAINNAME
-      - SMTP_PORT=587
-      - SMTP_SECURITY=starttls
-      - SMTP_USERNAME=$SMTP_USER
-      - SMTP_PASSWORD=$SMTP_PASS
     volumes:
       - $APPDIR/vaultwarden:/data
     labels:
