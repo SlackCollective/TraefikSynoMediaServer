@@ -46,8 +46,8 @@ services:
       - --providers.docker.exposedByDefault=true
       - --providers.docker.network=socket-proxy # Change to your container network, if not using socket
       - --entrypoints.web.address=:80
-      # Allow these IPs to set the X-Forwarded-* headers
       - --entryPoints.web.forwardedHeaders.trustedIPs=$LOCAL_IPS
+      # Redirect to https
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entryPoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
@@ -70,10 +70,9 @@ services:
       - --accesslog.filepath=/logs/access.log
       - --accessLog.filters.statusCodes=204-299,400-499,500-599
       - --accessLog.bufferingSize=60 # Configuring a buffer of 60 lines
-      # Allow these IPs to set the X-Forwarded-* headers - Cloudflare IPs: https://www.cloudflare.com/ips/
+      # TLS
       - --entrypoints.websecure.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       - --entrypoints.websecure.http.tls=true
-      # TLS
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
@@ -315,7 +314,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - WEBUI_PORTS=8080/tcp,8080/udp
       - VPN_ENABLED=true
       - VPN_CLIENT=wireguard
       - VPN_CONF=wg0-fix
