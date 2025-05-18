@@ -36,8 +36,9 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * imagemaid
 * tautulli
 * overseerr (allow users to request media)
-### BOOKS
+### BOOKS & PDF
 * calibre-web
+* Stirling pdf
 ### PASSWORD MANAGEMENT
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
