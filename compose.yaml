@@ -716,6 +716,39 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # StirlingPDF - pdf editor, digital signing etc.
+  stirling-pdf:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
+    container_name: stirlingpdf
+    restart: unless-stopped
+    networks:
+      mediaserver:
+    environment:
+      - DOCKER_ENABLE_SECURITY=true
+      - SECURITY_ENABLELOGIN=true
+      - LANGS=en_GB
+    volumes:
+      - $APPDIR/stirling/trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - $APPDIR/stirling/extraConfigs:/configs
+      - $APPDIR/stirling/customFiles:/customFiles/
+      - $APPDIR/stirling/logs:/logs/
+      - $APPDIR/stirling/pipeline:/pipeline/
+    labels:
+      - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.stirling.entrypoints=websecure
+      - traefik.http.routers.stirling.rule=Host(`pdf.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.stirling.middlewares=oauth
+      # HTTP Services
+      - traefik.http.routers.stirling.service=sterling
+      - traefik.http.services.sterling.loadbalancer.server.port=8080
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   ############################# SYSTEM MANAGEMENT/MONITORING
   # Notifiarr - update ARR profiles
   notifiarr:
