@@ -547,7 +547,7 @@ services:
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
-      - ${DATADIR}/media:/transcode
+      - /tmp:/transcode
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -732,9 +732,7 @@ services:
       - $APPDIR/stirling/extraConfigs:/configs
       - $APPDIR/stirling/customFiles:/customFiles/
       - $APPDIR/stirling/logs:/logs/
-      - $APPDIR/stirling/pipeline:/pipeline/
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.stirling.entrypoints=websecure
       - traefik.http.routers.stirling.rule=Host(`pdf.$DOMAINNAME`)
