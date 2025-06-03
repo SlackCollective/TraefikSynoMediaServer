@@ -563,27 +563,6 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# PLEX MONITORING/MANAGEMENT
-  # Imagemaid – Clean Plex database, redundant image files etc.
-  imagemaid:
-    image: kometateam/imagemaid
-    container_name: imagemaid
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    environment:
-      - UID=$PUID
-      - GID=$PGID
-      - TZ=$TZ
-    volumes:
-      - ${APPDIR}/imagemaid:/config:rw
-      - ${APPDIR}/plex:/plex
-    labels:
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   # Tautulli - Media play and user monitoring
   tautulli:
     image: lscr.io/linuxserver/tautulli:latest
@@ -600,7 +579,7 @@ services:
       - TZ=$TZ
     volumes:
       - $APPDIR/tautulli:/config:rw
-      - $APPDIR/plex/Library/Application Support/Plex Media Server/Logs:/plexlogs
+      - '$APPDIR/plex/Library/Application Support/Plex Media Server/Logs':/plexlogs
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
