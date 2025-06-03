@@ -579,7 +579,7 @@ services:
       - TZ=$TZ
     volumes:
       - $APPDIR/tautulli:/config:rw
-      - '$APPDIR/plex/Library/Application Support/Plex Media Server/Logs':/plexlogs
+      - $APPDIR/plex/Library/Application Support/Plex Media Server/Logs:/plexlogs
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
