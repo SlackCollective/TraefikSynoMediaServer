@@ -38,16 +38,21 @@ services:
       - --ping=true
       # Providers, Entrypoints
       - --providers.docker=true
-      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
       - --providers.docker.network=socket-proxy # Change to your container network, if not using socket
-      - --entrypoints.web.address=:80
-      - --entryPoints.web.forwardedHeaders.trustedIPs=$LOCAL_IPS
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
+      - --providers.file.watch=true # Only works on top level files in the rules folder
+      - --entrypoints.http.address=:80
+      - --entrypoints.https.address=:443
+      - --entrypoints.traefik.address=:8080
+      - --entrypoints.ping.address=:8081
       # Redirect to https
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entryPoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.websecure.address=:443
+      - --entrypoints.http.http.redirections.entrypoint.to=https
+      - --entrypoints.http.http.redirections.entrypoint.scheme=https
+      - --entrypoints.http.http.redirections.entrypoint.permanent=true
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       # Logging
       - --log=true
       - --log.compress=true
@@ -62,20 +67,18 @@ services:
       - --accessLog.filters.statusCodes=204-299,400-499,500-599
       - --accessLog.bufferingSize=60 # Configuring a buffer of 60 lines
       # TLS
-      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
-      - --entrypoints.websecure.http.tls=true
-      - --certificatesresolvers.cloudflare.acme.tlschallenge=true
-      # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-      - --entrypoints.websecure.http.tls.certresolver=cloudflare
-      - --entrypoints.websecure.http.tls.domains[0].main=$DOMAINNAME
-      - --entrypoints.websecure.http.tls.domains[0].sans=*.$DOMAINNAME
+      # - --serversTransport.insecureSkipVerify=true
+      - --entrypoints.https.http.tls=true
+      - --certificatesresolvers.cloudflare.acme.tlschallenge=true # disable this and enable below to avoid rate-limiting
+      # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --entrypoints.https.http.tls.certresolver=cloudflare
+      - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
+      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
       - --certificatesresolvers.cloudflare.acme.email=$CF_EMAIL
       - --certificatesresolvers.cloudflare.acme.storage=/acme.json
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
-      - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
-      - --providers.file.watch=true # Only works on top level files in the rules folder
     volumes:
       - $DOCKERDIR/certs/acme.json:/acme.json
       - $APPDIR/traefik/rules:/rules
@@ -87,7 +90,7 @@ services:
       - DOMAINNAME # Passing the domain name to use the variable in rules.
     labels:
       # HTTP Routers - Dashboard
-      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.entrypoints=https
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.dashboard.middlewares=oauth
@@ -141,7 +144,7 @@ services:
       - WHITELIST=$WHITELIST
     labels:
       # HTTP Routers
-      - traefik.http.routers.oauth.entrypoints=websecure
+      - traefik.http.routers.oauth.entrypoints=https
       - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAINNAME`)
       # Middlewares
       - traefik.http.middlewares.oauth.forwardauth.address=http://oauth:4181
@@ -172,7 +175,7 @@ services:
       - CRON="@daily"
     labels:
       # HTTP Routers
-      - traefik.http.routers.cloudflare.entrypoints=websecure
+      - traefik.http.routers.cloudflare.entrypoints=https
       # HTTP Services
       - traefik.http.routers.cloudflare.service=cloudflare
       - traefik.http.services.cloudflare.loadbalancer.server.port=80
@@ -198,7 +201,7 @@ services:
       - TZ=$TZ
     labels:
       # HTTP Routers
-      - traefik.http.routers.organizr.entrypoints=websecure
+      - traefik.http.routers.organizr.entrypoints=https
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
@@ -234,10 +237,10 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass (for NZB360)
-      - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
+      - traefik.http.routers.prowlarr-bypass.entrypoints=https
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       # HTTP Routers
-      - traefik.http.routers.prowlarr.entrypoints=websecure
+      - traefik.http.routers.prowlarr.entrypoints=https
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=oauth
@@ -270,10 +273,10 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
+      - traefik.http.routers.sabnzbd-bypass.entrypoints=https
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       # HTTP Routers
-      - traefik.http.routers.sabnzbd.entrypoints=websecure
+      - traefik.http.routers.sabnzbd.entrypoints=https
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=oauth
@@ -324,7 +327,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.qbittorrent.entrypoints=websecure
+      - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.qbittorrent.middlewares=oauth
@@ -362,7 +365,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.qbitmanage.entrypoints=websecure
+      - traefik.http.routers.qbitmanage.entrypoints=https
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=80
@@ -387,10 +390,10 @@ services:
       - $APPDIR/autobrr:/config
     labels:
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.autobrr-bypass.entrypoints=websecure
+      - traefik.http.routers.autobrr-bypass.entrypoints=https
       - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # HTTP Routers
-      - traefik.http.routers.autobrr.entrypoints=websecure
+      - traefik.http.routers.autobrr.entrypoints=https
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.autobrr.middlewares=oauth
@@ -422,7 +425,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.omegabrr.entrypoints=websecure
+      - traefik.http.routers.omegabrr.entrypoints=https
       # HTTP Services
       - traefik.http.routers.omegabrr.service=omegabrr
       - traefik.http.services.omegabrr.loadbalancer.server.port=7441
@@ -463,10 +466,10 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.radarr-bypass.entrypoints=websecure
+      - traefik.http.routers.radarr-bypass.entrypoints=https
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       # HTTP Routers
-      - traefik.http.routers.radarr.entrypoints=websecure
+      - traefik.http.routers.radarr.entrypoints=https
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.radarr.middlewares=oauth
@@ -510,10 +513,10 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.sonarr-bypass.entrypoints=websecure
+      - traefik.http.routers.sonarr-bypass.entrypoints=https
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       # HTTP Routers
-      - traefik.http.routers.sonarr.entrypoints=websecure
+      - traefik.http.routers.sonarr.entrypoints=https
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=oauth
@@ -551,7 +554,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.plex.entrypoints=websecure
+      - traefik.http.routers.plex.entrypoints=https
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.plex.service=plex
@@ -583,7 +586,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.tautulli.entrypoints=websecure
+      - traefik.http.routers.tautulli.entrypoints=https
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
@@ -613,7 +616,7 @@ services:
       - $DATADIR/media:/data/media
     labels:
       # HTTP Routers
-      - traefik.http.routers.overseerr.entrypoints=websecure
+      - traefik.http.routers.overseerr.entrypoints=https
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
@@ -643,7 +646,7 @@ services:
       - $DATADIR/media/youtube/cookies:/cookies
     labels:
       # HTTP Routers
-      - traefik.http.routers.metube.entrypoints=websecure
+      - traefik.http.routers.metube.entrypoints=https
       - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.metube.middlewares=oauth
@@ -684,7 +687,7 @@ services:
       - $APPDIR/books/custom-files:/custom-cont-init.d:ro
     labels:
       # HTTP Routers
-      - traefik.http.routers.books.entrypoints=websecure
+      - traefik.http.routers.books.entrypoints=https
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.books.service=books
@@ -713,7 +716,7 @@ services:
       - $APPDIR/stirling/logs:/logs/
     labels:
       # HTTP Routers
-      - traefik.http.routers.stirling.entrypoints=websecure
+      - traefik.http.routers.stirling.entrypoints=https
       - traefik.http.routers.stirling.rule=Host(`pdf.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.stirling.middlewares=oauth
@@ -744,7 +747,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.notifiarr.entrypoints=websecure
+      - traefik.http.routers.notifiarr.entrypoints=https
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.notifiarr.middlewares=oauth
@@ -775,7 +778,7 @@ services:
       - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
     labels:
       # HTTP Routers
-      - traefik.http.routers.dozzle.entrypoints=websecure
+      - traefik.http.routers.dozzle.entrypoints=https
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.dozzle.middlewares=oauth
@@ -811,7 +814,7 @@ services:
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
-      - traefik.http.routers.vaultwarden.entrypoints=websecure
+      - traefik.http.routers.vaultwarden.entrypoints=https
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
