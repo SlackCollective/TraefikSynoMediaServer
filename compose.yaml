@@ -52,7 +52,7 @@ services:
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS,$CLOUDFLARE_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       # Logging
       - --log=true
       - --log.compress=true
@@ -174,11 +174,6 @@ services:
       - DNS_SERVER=1.1.1.1
       - CRON="@daily"
     labels:
-      # HTTP Routers
-      - traefik.http.routers.cloudflare.entrypoints=https
-      # HTTP Services
-      - traefik.http.routers.cloudflare.service=cloudflare
-      - traefik.http.services.cloudflare.loadbalancer.server.port=80
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -401,34 +396,6 @@ services:
       - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # omegabrr - auto-generate filters for autobrr based on *arr subscriptions
-  omegabrr:
-    image: ghcr.io/autobrr/omegabrr:latest
-    container_name: omegabrr
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    depends_on:
-      sonarr: # artificial delay
-        condition: service_healthy
-    user: $PUID:$PGID
-    environment:
-      - TZ=$TZ
-    volumes:
-      - $APPDIR/omegabrr:/config
-    labels:
-      - dozzle ## Log viewer
-      # HTTP Routers
-      - traefik.http.routers.omegabrr.entrypoints=https
-      # HTTP Services
-      - traefik.http.routers.omegabrr.service=omegabrr
-      - traefik.http.services.omegabrr.loadbalancer.server.port=7441
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
