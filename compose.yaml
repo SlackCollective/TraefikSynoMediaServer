@@ -319,6 +319,7 @@ services:
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
+      - $APPDIR/qbittorrent/anonymouse.sh:/etc/cont-init.d/anonymouse
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -549,7 +550,6 @@ services:
       - TZ=$TZ
     volumes:
       - $APPDIR/tautulli:/config:rw
-      - $APPDIR/plex/Library/Application Support/Plex Media Server/Logs:/plexlogs
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -656,6 +656,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=https
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
