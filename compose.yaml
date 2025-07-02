@@ -772,16 +772,9 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - PUSH_ENABLED=true
-      - PUSH_INSTALLATION_ID=$PUSH_INSTALLATION_ID
-      - PUSH_INSTALLATION_KEY=$PUSH_INSTALLATION_KEY
-      - LOG_LEVEL=error
-      - EXTENDED_LOGGING=false
     volumes:
       - $APPDIR/vaultwarden:/data
-      - /etc/localtime:/etc/localtime:ro
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=https
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
