@@ -156,29 +156,6 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      
-  # Cloudflare DDNS - Dynamic DNS Updater
-  cloudflare:
-    image: oznu/cloudflare-ddns
-    container_name: cloudflare
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    environment:
-      - TZ=$TZ
-      - API_KEY=$CF_API_KEY
-      - ZONE=$DOMAINNAME
-      - PROXIED=false
-      - RRTYPE=A
-      - DELETE_ON_STOP=false
-      - DNS_SERVER=1.1.1.1
-      - CRON="@daily"
-    labels:
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
