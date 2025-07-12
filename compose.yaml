@@ -510,6 +510,57 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  ############################# MEDIA FILE MANAGEMENT
+  # Tdarr - Transcode for compatibility with Plex streaming
+  tdarr:
+    image: ghcr.io/haveagitgat/tdarr:latest
+    container_name: tdarr
+    restart: unless-stopped
+    networks:
+      mediaserver:
+    ports:
+      - 8265:8265 # webUI port
+      - 8266:8266 # server port
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - inContainer=true
+      - ffmpegVersion=7
+      - nodeName=TdarrNode
+      - auth=false
+      - openBrowser=false
+      - maxLogSizeMB=2
+      - cronPluginUpdate=
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - $APPDIR/tdarr/server:/app/server
+      - $APPDIR/tdarr/configs:/app/configs
+      - $APPDIR/tdarr/logs:/app/logs
+      - $APPDIR/tdarr/temp/temp
+      - ${DATADIR}/media:/data/media:rw
+    labels:
+      - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.tdarr.entrypoints=https
+      - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
+      # HTTP Services
+      - traefik.http.routers.tdarr.service=tdarr
+      - traefik.http.services.tdarr.loadbalancer.server.port=8265
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   ############################# PLEX MONITORING/MANAGEMENT
   # Tautulli - Media play and user monitoring
   tautulli:
@@ -667,8 +718,8 @@ services:
       # Middlewares
       - traefik.http.routers.stirling.middlewares=oauth
       # HTTP Services
-      - traefik.http.routers.stirling.service=sterling
-      - traefik.http.services.sterling.loadbalancer.server.port=8080
+      - traefik.http.routers.stirling.service=stirling
+      - traefik.http.services.stirling.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
