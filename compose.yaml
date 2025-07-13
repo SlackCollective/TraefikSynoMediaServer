@@ -85,8 +85,8 @@ services:
       - $APPDIR/traefik/logs:/logs
     environment:
       - TZ=$TZ
-      - CF_API_EMAIL=$SMTP_USER
-      - CF_API_KEY=$CF_MASTERAPI
+      - CF_API_EMAIL=$CF_EMAIL
+      - CF_API_KEY=$CF_API_KEY
       - DOMAINNAME # Passing the domain name to use the variable in rules.
     labels:
       # HTTP Routers - Dashboard
@@ -574,6 +574,7 @@ services:
       mediaserver:
     volumes:
       - $APPDIR/tautulli:/config:rw
+      - $PLEXLOGS:/plexlogs:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -583,8 +584,12 @@ services:
       # HTTP Routers
       - traefik.http.routers.tautulli.entrypoints=https
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
+      # HTTP Routers Auth Bypass
+      - traefik.http.routers.tautulli-bypass.entrypoints=https
+      - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
+      - traefik.http.routers.tautulli-bypass.service=tautulli
       - traefik.http.services.tautulli.loadbalancer.server.port=8181
       ## Updating and notifications
       - org.hotio.pullio.notify=true
