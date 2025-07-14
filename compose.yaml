@@ -543,8 +543,6 @@ services:
       - openBrowser=true
       - maxLogSizeMB=2
       - cronPluginUpdate=
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - NVIDIA_VISIBLE_DEVICES=all
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
