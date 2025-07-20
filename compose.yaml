@@ -55,17 +55,7 @@ services:
       - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       # Logging
       - --log=true
-      - --log.compress=true
-      - --log.level=ERROR # (Default: error) DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-      - --log.maxSize=1
-      - --log.maxAge=3
-      - --log.maxbackups=3
-      - --log.filepath=/logs/traefik.log
       - --accesslog=false
-      - --accesslog.addinternals=true
-      - --accesslog.filepath=/logs/access.log
-      - --accessLog.filters.statusCodes=204-299,400-499,500-599
-      - --accessLog.bufferingSize=60 # Configuring a buffer of 60 lines
       # TLS
       # - --serversTransport.insecureSkipVerify=true
       - --entrypoints.https.http.tls=true
@@ -110,6 +100,8 @@ services:
     restart: unless-stopped
     networks:
       socket-proxy:
+    ports:
+      - 2375:2375
     read_only: true
     tmpfs:
       - /run
@@ -331,6 +323,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - QBT_WEB_SERVER=true
       - QBT_SCHEDULE=360 # minutes - default is 1440 (once daily)
       - QBT_STARTUP_DELAY=30 # seconds
       - QBT_SKIP_QB_VERSION_CHECK=true
@@ -339,9 +332,12 @@ services:
       - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.qbitmanage.entrypoints=https
+      - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.qbitmanage.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
-      - traefik.http.services.qbitmanage.loadbalancer.server.port=80
+      - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
