@@ -4,7 +4,7 @@ networks:
     driver: bridge
   socket-proxy:
     driver: bridge
-
+##
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
