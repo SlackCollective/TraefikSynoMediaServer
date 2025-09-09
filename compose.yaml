@@ -4,7 +4,6 @@ networks:
     driver: bridge
   socket-proxy:
     driver: bridge
-
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
@@ -46,8 +45,6 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
-      - --entrypoints.traefik.address=:8080
-      - --entrypoints.ping.address=:8081
       # Redirect to https
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
@@ -86,7 +83,7 @@ services:
       - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
-      - traefik.http.services.api.loadbalancer.server.port=8080
+      # - traefik.http.services.api.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -112,6 +109,8 @@ services:
       - DISABLE_IPV6=1 #optional
       - EVENTS=1 #optional
       - INFO=1 #optional
+    labels:
+      - traefik.enable=false
 
   # Google OAuth - Single Sign On using OAuth 2.0
   oauth:
@@ -265,7 +264,7 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
     devices:
-      - /dev/net/tun:/dev/net/tun # Optional, for e.g. Syno NAS docker access to VPN
+      - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
     networks:
       mediaserver:
     volumes:
@@ -358,16 +357,12 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
     labels:
-      # HTTP Routers Auth Bypass
-      - traefik.http.routers.autobrr-bypass.entrypoints=https
-      - traefik.http.routers.autobrr-bypass.rule=Host(`autobrr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$AUTOBRR_API_KEY`) || Query(`apikey`, `$AUTOBRR_API_KEY`))
       # HTTP Routers
       - traefik.http.routers.autobrr.entrypoints=https
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.autobrr.middlewares=oauth
       # HTTP Services
-      - traefik.http.routers.autobrr-bypass.service=autobrr
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
       ## Updating and notifications
@@ -482,7 +477,7 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     group_add:
-      - "937"  # videodriver group on Syno, or add Docker user to video group
+      - "937"  # videodriver group on Synology
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
@@ -520,7 +515,7 @@ services:
     devices:
       - /dev/dri:/dev/dri
     group_add:
-      - "937"  # videodriver group on Syno, or add Docker user to video group
+      - "937"  # videodriver group on Synology
     volumes:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
