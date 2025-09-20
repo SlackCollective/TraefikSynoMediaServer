@@ -4,9 +4,8 @@ networks:
     driver: bridge
   socket-proxy:
     driver: bridge
-
 services:
-########################### REVERSE PROXY / NETWORKING / SECURITY
+########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
   traefik:
     image: traefik:v3
@@ -90,7 +89,7 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-
+    
   # Socket proxy - avoid granting WAN access to docker.sock
   socket:
     image: lscr.io/linuxserver/socket-proxy:latest
@@ -269,7 +268,7 @@ services:
     networks:
       mediaserver:
     ports:
-      - 9997:8080
+      - 9997:8080 # local accessibility because setting changes aren't saved on reverse proxy
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -583,8 +582,6 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.tautulli-bypass.entrypoints=https
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
-      # Middlewares
-      - traefik.http.routers.tautulli.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -652,38 +649,6 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  ############################# INTERNET VIDEO DOWNLOADER
-  # Metube – Self-hosted YT downloader with GUI
-  metube:
-    image: ghcr.io/alexta69/metube
-    container_name: metube
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    volumes:
-      - $DATADIR/media/youtube:/downloads
-      - $DATADIR/media/youtube/cookies:/cookies
-    environment:
-      - UID=$PUID
-      - GID=$PGID
-      - TZ=$TZ
-      - DELETE_FILE_ON_TRASHCAN=true
-      - OUTPUT_TEMPLATE=$METUBE
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.metube.entrypoints=https
-      - traefik.http.routers.metube.rule=Host(`metube.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.metube.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.metube.service=metube
-      - traefik.http.services.metube.loadbalancer.server.port=8081
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   ############################# BOOK LIBRARY MANAGEMENT
   # Calibre Web Automated - fork of Calibre-web, includes auto conversion
   calibreweb:
@@ -719,37 +684,6 @@ services:
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # StirlingPDF - pdf editor, digital signing etc.
-  stirling-pdf:
-    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
-    container_name: stirlingpdf
-    restart: unless-stopped
-    networks:
-      mediaserver:
-    volumes:
-      - $APPDIR/stirling/trainingData:/usr/share/tessdata # Required for extra OCR languages
-      - $APPDIR/stirling/extraConfigs:/configs
-      - $APPDIR/stirling/customFiles:/customFiles/
-      - $APPDIR/stirling/logs:/logs/
-    environment:
-      - DOCKER_ENABLE_SECURITY=true
-      - SECURITY_ENABLELOGIN=true
-      - LANGS=en_GB
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.stirling.entrypoints=https
-      - traefik.http.routers.stirling.rule=Host(`pdf.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.stirling.middlewares=oauth
-      # HTTP Services
-      - traefik.http.routers.stirling.service=stirling
-      - traefik.http.services.stirling.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
