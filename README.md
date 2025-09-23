@@ -22,7 +22,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### DOWNLOADERS
 * sabnzbd
 * qbittorrent (hotio, with vpn support)
-* MeTube (download YouTube videos)
 ### TORRENT MANAGEMENT
 * qbit-manage
 * autobrr
@@ -33,12 +32,11 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * tdarr
 ### HOME THEATRE
 * plex
-* imagemaid
 * tautulli
 * overseerr (allow users to request media)
+* maintainerr (automated Plex library maintenance)
 ### BOOKS & PDF
 * calibre-web
-* Stirling pdf
 ### PASSWORD MANAGEMENT
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
