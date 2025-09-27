@@ -2,8 +2,13 @@
 networks:
   mediaserver:
     driver: bridge
+    name: mediaserver
+    external: true
   socket-proxy:
     driver: bridge
+    name: internal
+    internal: true
+
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
   # Traefik 3 - Reverse Proxy
@@ -49,7 +54,7 @@ services:
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
+      # - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       # Logging
       - --log=true
       - --accesslog=false
@@ -483,7 +488,6 @@ services:
     volumes:
       - ${APPDIR}/plex:/config:rw
       - ${DATADIR}/media:/data/media:rw
-      - /tmp:/transcode
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
