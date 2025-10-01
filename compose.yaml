@@ -54,7 +54,7 @@ services:
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
-      # - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
       # Logging
       - --log=true
       - --accesslog=false
@@ -67,12 +67,12 @@ services:
       - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
       - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
       - --certificatesresolvers.cloudflare.acme.email=$CF_EMAIL
-      - --certificatesresolvers.cloudflare.acme.storage=/acme.json
+      - --certificatesresolvers.cloudflare.acme.storage=/certs/acme.json
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
     volumes:
-      - $DOCKERDIR/certs/acme.json:/acme.json
+      - $DOCKERDIR/certs:/certs
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
     environment:
@@ -114,6 +114,21 @@ services:
       - DISABLE_IPV6=1 #optional
       - EVENTS=1 #optional
       - INFO=1 #optional
+    labels:
+      - traefik.enable=false
+
+  # Certdumper - Export acme.json
+  certdumper:
+    image: ghcr.io/kereis/traefik-certs-dumper:latest
+    container_name: certdump
+    restart: unless-stopped
+    network_mode: none
+    volumes:
+    - $DOCKERDIR/certs:/traefik:ro
+    - $DOCKERDIR/certexports:/output:rw
+    # Don't set DOMAIN
+    # environment:
+    # - DOMAIN=example.org
     labels:
       - traefik.enable=false
 
