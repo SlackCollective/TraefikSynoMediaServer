@@ -501,13 +501,14 @@ services:
     group_add:
       - "937"  # videodriver group on Synology
     volumes:
-      - ${APPDIR}/plex:/config:rw
-      - ${DATADIR}/media:/data/media:rw
+      - $APPDIR/plex:/config:rw
+      - $DATADIR/media:/data/media:rw
+      - $DOCKERDIR/certexports:/certexports
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - PLEX_CLAIM=${PLEX_TOKEN} #only needed when first claiming server
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - PLEX_CLAIM=$PLEX_TOKEN #only needed when first claiming server
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
