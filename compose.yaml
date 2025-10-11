@@ -7,7 +7,7 @@ networks:
   socket-proxy:
     driver: bridge
     name: internal
-    internal: true
+    external: true
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
@@ -503,12 +503,11 @@ services:
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
-      - $DOCKERDIR/certexports:/certexports
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - PLEX_CLAIM=$PLEX_TOKEN #only needed when first claiming server
+      # - PLEX_CLAIM=$PLEX_TOKEN #only needed when first claiming server
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -595,7 +594,6 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     labels:
-      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.tautulli.entrypoints=https
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
@@ -612,10 +610,10 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # Overseer - Allows Plex users to request media
-  overseerr:
-    image: lscr.io/linuxserver/overseerr:latest
-    container_name: overseerr
+  # Seer - Allows Plex users to request media
+  jellyseerr:
+    image: fallenbagel/jellyseerr
+    container_name: jellyseerr
     restart: unless-stopped
     networks:
       mediaserver:
@@ -623,12 +621,11 @@ services:
       plex:
         condition: service_healthy
     volumes:
-      - $APPDIR/overseerr:/config
+      - $APPDIR/jellyseerr:/app/config
       - $DATADIR/media:/data/media
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
       - TZ=$TZ
+      - LOG_LEVEL=error
     labels:
       # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=https
