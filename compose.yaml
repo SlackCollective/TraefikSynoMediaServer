@@ -110,10 +110,19 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - CONTAINERS=1 #optional
+      - CONTAINERS=1
+      - IMAGES=1
+      - PING=1
+      - VERSION=1
+      - INFO=1
+      - POST=1
+      # Required for container updates
+      - ALLOW_START=1
+      - ALLOW_STOP=1
+      - ALLOW_RESTARTS=1
+      - NETWORKS=1
       - DISABLE_IPV6=1 #optional
       - EVENTS=1 #optional
-      - INFO=1 #optional
     labels:
       - traefik.enable=false
 
