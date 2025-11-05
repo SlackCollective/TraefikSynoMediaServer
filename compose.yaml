@@ -6,7 +6,7 @@ networks:
     external: true
   socket-proxy:
     driver: bridge
-    name: internal
+    name: socket-proxy
     external: true
 
 services:
@@ -33,6 +33,11 @@ services:
     ports:
       - 89:80
       - 449:443
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: # CLI arguments
       # Dashboard, Ping, Telemetry
       - --global.sendAnonymousUsage=true
@@ -44,7 +49,7 @@ services:
       - --providers.docker=true
       - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
-      - --providers.docker.network=socket-proxy # Change to your container network, if not using socket
+      - --providers.docker.network=mediaserver # Change to your container network, if not using socket
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
@@ -114,6 +119,11 @@ services:
       - DISABLE_IPV6=1 #optional
       - EVENTS=1 #optional
       - INFO=1 #optional
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - traefik.enable=false
 
@@ -182,6 +192,15 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=https
@@ -217,11 +236,21 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-bypass.entrypoints=https
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
+      - traefik.http.routers.prowlarr-bypass.priority=100
       # HTTP Routers
       - traefik.http.routers.prowlarr.entrypoints=https
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
@@ -253,11 +282,21 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - HAS_IPV6=false
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-bypass.entrypoints=https
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
+      - traefik.http.routers.sabnzbd-bypass.priority=100
       # HTTP Routers
       - traefik.http.routers.sabnzbd.entrypoints=https
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
@@ -284,7 +323,7 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
     devices:
-      - /dev/net/tun:/dev/net/tun # Optional, if not on e.g. Syno NAS
+      - /dev/net/tun:/dev/net/tun
     networks:
       mediaserver:
     ports:
@@ -310,6 +349,15 @@ services:
       - PRIVOXY_ENABLED=false
       - UNBOUND_ENABLED=false
       - QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE=1
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -349,6 +397,15 @@ services:
       - QBT_STARTUP_DELAY=30 # seconds
       - QBT_SKIP_QB_VERSION_CHECK=true
       - VERIFY_WEBUI_CERTIFICATE=False
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -378,6 +435,15 @@ services:
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.autobrr.entrypoints=https
@@ -417,11 +483,21 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-bypass.entrypoints=https
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
+      - traefik.http.routers.radarr-bypass.priority=100
       # HTTP Routers
       - traefik.http.routers.radarr.entrypoints=https
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
@@ -460,11 +536,21 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-bypass.entrypoints=https
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
+      - traefik.http.routers.sonarr-bypass.priority=100
       # HTTP Routers
       - traefik.http.routers.sonarr.entrypoints=https
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
@@ -508,6 +594,15 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       # - PLEX_CLAIM=$PLEX_TOKEN #only needed when first claiming server
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -559,6 +654,15 @@ services:
       - openBrowser=true
       - maxLogSizeMB=2
       - cronPluginUpdate=
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -593,6 +697,15 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.tautulli.entrypoints=https
@@ -600,6 +713,9 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.tautulli-bypass.entrypoints=https
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
+      - traefik.http.routers.tautulli-bypass.priority=100
+      # Middlewares
+      - traefik.http.routers.tautulli.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -626,6 +742,15 @@ services:
     environment:
       - TZ=$TZ
       - LOG_LEVEL=error
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=https
@@ -651,6 +776,15 @@ services:
       - ${APPDIR}/maintainerr:/opt/data
     environment:
       - TZ=${TZ}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.maintainerr.entrypoints=https
@@ -692,6 +826,15 @@ services:
       - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
       - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.books.entrypoints=https
@@ -722,6 +865,15 @@ services:
       - TZ=$TZ
       - DN_API_KEY=$NOTIFIARR
       - USER=docker
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - dozzle ## Log viewer
       # HTTP Routers
@@ -754,6 +906,15 @@ services:
       - DOZZLE_ENABLE_ACTIONS=true
       - TZ=${TZ}
       - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.dozzle.entrypoints=https
@@ -783,6 +944,15 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=https
