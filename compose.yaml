@@ -49,7 +49,7 @@ services:
       - --providers.docker=true
       - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
-      - --providers.docker.network=mediaserver # Change to your container network, if not using socket
+      - --providers.docker.network=mediaserver
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
@@ -152,7 +152,7 @@ services:
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
-      - INSECURE_COOKIE=true # apparently needed for http entrypoints
+      # - INSECURE_COOKIE=true # needed for http entrypoints
       - AUTH_HOST=oauth.$DOMAINNAME
       - URL_PATH=/_oauth
       - LOG_LEVEL=warn # set to trace while testing bypass rules
@@ -187,7 +187,7 @@ services:
     networks:
       mediaserver:
     volumes:
-      - $APPDIR/organizr:/config # Make sure your local config directory exists
+      - $APPDIR/organizr:/config
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -352,7 +352,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -393,14 +393,14 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - QBT_WEB_SERVER=true
-      - QBT_SCHEDULE=360 # minutes - default is 1440 (once daily)
+      - QBT_SCHEDULE=360 # minutes
       - QBT_STARTUP_DELAY=30 # seconds
       - QBT_SKIP_QB_VERSION_CHECK=true
       - VERIFY_WEBUI_CERTIFICATE=False
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -438,7 +438,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -700,7 +700,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -745,7 +745,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -779,7 +779,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -823,13 +823,13 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
-      - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
+      # - OAUTHLIB_RELAX_TOKEN_SCOPE=1 #optional, seems necessary for Google oAuth
+      # - OAUTHLIB_INSECURE_TRANSPORT=1 #insecure, seems necessary for Google oAuth
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -868,7 +868,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -909,7 +909,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 128M
     logging:
       driver: "json-file"
       options:
