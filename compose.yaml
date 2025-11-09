@@ -587,8 +587,9 @@ services:
     group_add:
       - "937"  # videodriver group on Synology
     volumes:
-      - $APPDIR/plex:/config:rw
+      # - $APPDIR/plex:/config:rw #If using Docker app directory
       - $DATADIR/media:/data/media:rw
+      - $PLEXDB:/config # moved to USB SSD for speed
     environment:
       - PUID=$PUID
       - PGID=$PGID
