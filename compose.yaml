@@ -15,7 +15,7 @@ services:
   traefik:
     image: traefik:v3
     container_name: traefik
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
@@ -33,6 +33,7 @@ services:
     ports:
       - 89:80
       - 449:443
+      - 127.0.0.1:8080:8080 # http api dashboard
     logging:
       driver: "json-file"
       options:
@@ -55,16 +56,25 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
+      # http middlewares
+      - --entrypoints.https.http.middlewares=nooauth@file
       # Redirect to https
+      - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$LOCAL_IPS # Add $CLOUDFLARE_IPS if using CF tunnel
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       # Logging
-      - --log=true
-      - --accesslog=false
+      - --log.level=INFO
+      - --accesslog=true
+      - --accesslog.filepath=/logs/traefik.log
+      - --accesslog.format=json
+      - --accesslog.bufferingsize=0
+      - --accesslog.filters.statuscodes=400-599 # only log http errors in logs; alternatively set 200-599 to include successful http requests
+      - --accesslog.fields.headers.defaultmode=drop # drop all headers
+      - --accesslog.fields.headers.names.user-agent=keep # keep user-agent header
       # TLS
-      # - --serversTransport.insecureSkipVerify=true
+      - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
       - --certificatesresolvers.cloudflare.acme.tlschallenge=true # disable this and enable below to avoid rate-limiting
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
@@ -76,10 +86,14 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
+      # Plugins
+      - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.4.6
     volumes:
-      - $DOCKERDIR/certs:/certs
+      - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
+      - $DOCKERDIR/certs:/certs
     environment:
       - TZ=$TZ
       - CF_API_EMAIL=$CF_EMAIL
@@ -90,16 +104,15 @@ services:
       - traefik.http.routers.dashboard.entrypoints=https
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=oauth
+      - traefik.http.routers.dashboard.middlewares=secured@file
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
-      # - traefik.http.services.api.loadbalancer.server.port=8080
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-    
+
   # Socket proxy - avoid granting WAN access to docker.sock
   socket:
     image: lscr.io/linuxserver/socket-proxy:latest
@@ -132,15 +145,50 @@ services:
     image: ghcr.io/kereis/traefik-certs-dumper:latest
     container_name: certdump
     restart: unless-stopped
-    network_mode: none
+    networks:
+      mediaserver:
     volumes:
     - $DOCKERDIR/certs:/traefik:ro
     - $DOCKERDIR/certexports:/output:rw
-    # Don't set DOMAIN
-    # environment:
-    # - DOMAIN=example.org
     labels:
       - traefik.enable=false
+
+  # Crowdsec - blacklist threats
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.7.3
+    container_name: crowdsec
+    restart: unless-stopped
+    networks:
+      - socket-proxy
+      - mediaserver
+    ports:
+      - 127.0.0.1:9876:8080 # mapping for local firewall bouncers
+      - 6060:6060 # metrics endpoint for prometheus
+      - 7422:7422 # appsec waf endpoint
+    volumes:
+      # crowdsec container data
+      - $APPDIR/crowdsec/data:/var/lib/crowdsec/data
+      - $APPDIR/crowdsec/etc:/etc/crowdsec
+      # log bind mounts into crowdsec
+      - ../../var/log/auth.log:/var/log/auth.log:ro
+      - ../../var/log/syslog.log:/var/log/syslog:ro
+      - $APPDIR/traefik/logs:/var/log/traefik:ro
+    environment:
+      - GID=$PGID
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
+      - CUSTOM_HOSTNAME=brunswick-crowdsec
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - dozzle ## Log viewer
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
 
   # Google OAuth - Single Sign On using OAuth 2.0
   oauth:
@@ -167,9 +215,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.oauth.entrypoints=https
       - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.middlewares.oauth.forwardauth.address=http://oauth:4181
-      - traefik.http.middlewares.oauth.forwardauth.authResponseHeaders=X-Forwarded-User
       # HTTP Services
       - traefik.http.services.oauth.loadbalancer.server.port=4181
       ## Updating and notifications
@@ -205,6 +250,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.organizr.entrypoints=https
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.organizr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -255,7 +302,7 @@ services:
       - traefik.http.routers.prowlarr.entrypoints=https
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.prowlarr.middlewares=oauth
+      - traefik.http.routers.prowlarr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -301,7 +348,7 @@ services:
       - traefik.http.routers.sabnzbd.entrypoints=https
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=oauth
+      - traefik.http.routers.sabnzbd.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -364,7 +411,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=oauth
+      - traefik.http.routers.qbittorrent.middlewares=oauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
@@ -412,7 +459,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=oauth
+      - traefik.http.routers.qbitmanage.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
@@ -449,7 +496,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=https
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=oauth
+      - traefik.http.routers.autobrr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
@@ -502,7 +549,7 @@ services:
       - traefik.http.routers.radarr.entrypoints=https
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.radarr.middlewares=oauth
+      - traefik.http.routers.radarr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -555,7 +602,7 @@ services:
       - traefik.http.routers.sonarr.entrypoints=https
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.sonarr.middlewares=oauth
+      - traefik.http.routers.sonarr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -589,10 +636,13 @@ services:
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
+      - $DATADIR/media/tv:/tv:rw
+      - $DATADIR/media/movies:/movies:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - VERSION=docker
       # - PLEX_CLAIM=$PLEX_TOKEN #only needed when first claiming server
     deploy:
       resources:
@@ -669,7 +719,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=https
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr.middlewares=oauth
+      - traefik.http.routers.tdarr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.tdarr.service=tdarr
       - traefik.http.services.tdarr.loadbalancer.server.port=8265
@@ -690,6 +740,8 @@ services:
         condition: service_healthy
     networks:
       mediaserver:
+    ports:
+      - 8181:8181
     volumes:
       - $APPDIR/tautulli:/config:rw
       - $PLEXLOGS:/plexlogs:rw
@@ -700,7 +752,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -713,9 +765,8 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.tautulli-bypass.entrypoints=https
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
-      - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=oauth
+      - traefik.http.routers.tautulli.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -733,6 +784,8 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
+    ports:
+      - 5055:5055
     depends_on:
       plex:
         condition: service_healthy
@@ -745,7 +798,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -790,7 +843,7 @@ services:
       - traefik.http.routers.maintainerr.entrypoints=https
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=oauth
+      - traefik.http.routers.maintainerr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
@@ -840,7 +893,7 @@ services:
       - traefik.http.routers.books.entrypoints=https
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.books.middlewares=oauth
+      - traefik.http.routers.books.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -880,7 +933,7 @@ services:
       - traefik.http.routers.notifiarr.entrypoints=https
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=oauth
+      - traefik.http.routers.notifiarr.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
@@ -920,7 +973,7 @@ services:
       - traefik.http.routers.dozzle.entrypoints=https
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dozzle.middlewares=oauth
+      - traefik.http.routers.dozzle.middlewares=secured@file
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
