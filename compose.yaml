@@ -366,6 +366,7 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+      - SYS_MODULE
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
@@ -443,7 +444,7 @@ services:
       - QBT_SCHEDULE=360 # minutes
       - QBT_STARTUP_DELAY=30 # seconds
       - QBT_SKIP_QB_VERSION_CHECK=true
-      - VERIFY_WEBUI_CERTIFICATE=False
+      - VERIFY_WEBUI_CERTIFICATE=false
     deploy:
       resources:
         limits:
