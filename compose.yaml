@@ -153,6 +153,45 @@ services:
     labels:
       - traefik.enable=false
 
+  # Gluetun - VPN for torrents
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=1
+    networks:
+      mediaserver:
+      socket-proxy:
+    ports:
+      - 9997:9997
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=airvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=oGtljghWM7gem0GDxdB9AuxTVu06yXuBWg5IQ+pjVV8=
+      - WIREGUARD_PRESHARED_KEY=HjKPE3h4R+soXgggyLJOrpBwHb8eAFDq8THkdB0s+f0=
+      - WIREGUARD_ADDRESSES=10.145.47.113/32
+      - SERVER_COUNTRIES=Netherlands
+      - FIREWALL_VPN_INPUT_PORTS=51007
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - dozzle ## Log viewer
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   # Crowdsec - blacklist threats
   crowdsec:
     image: crowdsecurity/crowdsec:v1.7.3
@@ -364,38 +403,17 @@ services:
     image: ghcr.io/hotio/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
-      - net.ipv6.conf.all.disable_ipv6=1
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    networks:
-      mediaserver:
-    ports:
-      - 9997:8080 # local accessibility because setting changes aren't saved on reverse proxy
+    network_mode: "service:gluetun"
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
-      - $APPDIR/qbittorrent/anonymouse.sh:/etc/cont-init.d/anonymouse
+      # - $APPDIR/qbittorrent/anonymouse.sh:/etc/cont-init.d/anonymouse
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - VPN_ENABLED=true
-      - VPN_CLIENT=wireguard
-      - VPN_CONF=wg0-fix
-      - VPN_PROVIDER=generic
-      - VPN_LAN_NETWORK=192.168.1.0/24
-      - VPN_LAN_LEAK_ENABLED=false
-      - VPN_AUTO_PORT_FORWARD=51007
-      - VPN_KEEP_LOCAL_DNS=true
-      - VPN_FIREWALL_TYPE=auto
-      - VPN_HEALTHCHECK_ENABLED=true
-      - PRIVOXY_ENABLED=false
-      - UNBOUND_ENABLED=false
+      - VPN_ENABLED=false
+      - WEBUI_PORTS=9997/tcp,9997/udp
       - QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE=1
     deploy:
       resources:
@@ -415,7 +433,7 @@ services:
       - traefik.http.routers.qbittorrent.middlewares=oauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
