@@ -398,23 +398,21 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # qbittorrent - torrent downloader with VPN
+  # qbittorrent - LSIO container, using Gluetun for VPN
   qbittorrent:
-    image: ghcr.io/hotio/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
-      # - $APPDIR/qbittorrent/anonymouse.sh:/etc/cont-init.d/anonymouse
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - VPN_ENABLED=false
-      - WEBUI_PORTS=9997/tcp,9997/udp
-      - QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE=1
+      - WEBUI_PORT=9997
+      - TORRENTING_PORT=57001
     deploy:
       resources:
         limits:
@@ -433,7 +431,7 @@ services:
       - traefik.http.routers.qbittorrent.middlewares=oauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
+      - traefik.http.services.torrents.loadbalancer.server.port=9997
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
