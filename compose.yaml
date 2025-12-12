@@ -173,12 +173,12 @@ services:
     environment:
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY=oGtljghWM7gem0GDxdB9AuxTVu06yXuBWg5IQ+pjVV8=
-      - WIREGUARD_PRESHARED_KEY=HjKPE3h4R+soXgggyLJOrpBwHb8eAFDq8THkdB0s+f0=
-      - WIREGUARD_ADDRESSES=10.145.47.113/32
+      - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
+      - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
+      - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
       - SERVER_COUNTRIES=Netherlands
       - FIREWALL_VPN_INPUT_PORTS=51007
-      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
+      - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
     logging:
       driver: "json-file"
       options:
@@ -412,7 +412,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - WEBUI_PORT=9997
-      - TORRENTING_PORT=57001
+      - TORRENTING_PORT=51007
     deploy:
       resources:
         limits:
@@ -431,7 +431,7 @@ services:
       - traefik.http.routers.qbittorrent.middlewares=oauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.services.torrents.loadbalancer.server.port=9997
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -445,9 +445,6 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
-    depends_on:
-      prowlarr: # artificial delay
-        condition: service_healthy
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -457,14 +454,10 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - QBT_WEB_SERVER=true
-      - QBT_SCHEDULE=360 # minutes
-      - QBT_STARTUP_DELAY=30 # seconds
-      - QBT_SKIP_QB_VERSION_CHECK=true
-      - VERIFY_WEBUI_CERTIFICATE=false
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -476,7 +469,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=secured@file
+      - traefik.http.routers.qbitmanage.middlewares=oauth@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
