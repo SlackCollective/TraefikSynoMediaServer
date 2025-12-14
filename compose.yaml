@@ -57,15 +57,16 @@ services:
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
       # http middlewares
+      - --entrypoints.http.http.middlewares=nooauth@file
       - --entrypoints.https.http.middlewares=nooauth@file
       # Redirect to https
       - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       # Logging
-      - --log.level=INFO
+      - --log.level=ERROR
       - --accesslog=true
       - --accesslog.filepath=/logs/traefik.log
       - --accesslog.format=json
@@ -158,6 +159,12 @@ services:
     image: qmcgaw/gluetun
     container_name: gluetun
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/gluetun-entrypoint healthcheck || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 1
+      start_period: 10s
     cap_add:
       - NET_ADMIN
     sysctls:
@@ -165,7 +172,7 @@ services:
       - net.ipv6.conf.all.disable_ipv6=1
     networks:
       mediaserver:
-      socket-proxy:
+      # socket-proxy:
     ports:
       - 9997:9997
     devices:
@@ -198,7 +205,7 @@ services:
     container_name: crowdsec
     restart: unless-stopped
     networks:
-      - socket-proxy
+      # - socket-proxy
       - mediaserver
     ports:
       - 127.0.0.1:9876:8080 # mapping for local firewall bouncers
@@ -222,7 +229,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      - dozzle ## Log viewer
+      # - dozzle ## Log viewer
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -404,6 +411,9 @@ services:
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -486,9 +496,6 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
-    depends_on:
-      prowlarr: # artificial delay
-        condition: service_healthy
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -938,7 +945,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      - dozzle ## Log viewer
+      # - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.notifiarr.entrypoints=https
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
@@ -993,6 +1000,78 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # Beszel server - docker stats server
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: beszel
+    restart: unless-stopped
+    networks:
+      mediaserver:
+      socket-proxy:
+    ports:
+      - 8090:8090
+    volumes:
+      - $APPDIR/beszel:/beszel_data
+      - $APPDIR/beszel/socket:/beszel_socket
+    environment:
+      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      # HTTP Routers
+      - traefik.http.routers.beszel.entrypoints=https
+      - traefik.http.routers.beszel.rule=Host(`beszel.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.beszel.middlewares=secured@file
+      # HTTP Services
+      - traefik.http.routers.beszel.service=beszel
+      - traefik.http.services.beszel.loadbalancer.server.port=8090
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # Beszel agent - docker stats viewer
+  beszel-agent:
+    image: henrygd/beszel-agent
+    container_name: beszel-agent
+    restart: unless-stopped
+    networks:
+      mediaserver:
+      socket-proxy:
+    volumes:
+      - $APPDIR/beszel/agent:/var/lib/beszel-agent
+      - $APPDIR/beszel/socket:/beszel_socket
+    environment:
+      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
+      - LISTEN=45876
+      - HUB_URL=http://beszel:8090
+      - KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGiZuB/DmYTW/+BGFWCVZR7yWV7wTMLDuA/WEOdKT4l9
+      - TOKEN=607bbf96-d4bb-4397-886d-4e0d4e9dfbc7
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   ############################# SECURITY/PASSWORD MANAGEMENT
   # Vaultwarden - Locally-hosted Bitwarden
   vaultwarden:
@@ -1017,6 +1096,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      - dozzle ## Log viewer
       # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=https
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
