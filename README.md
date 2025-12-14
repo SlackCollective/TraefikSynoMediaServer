@@ -13,6 +13,8 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### WEBSERVER/REVERSE PROXY/DNS/VPN
 * traefik
 * socket proxy
+### VPN
+* Gluetun (supports multiple VPN providers)
 ### AUTH
 * Google oauth
 ### HOMEPAGE
@@ -21,7 +23,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * prowlarr
 ### DOWNLOADERS
 * sabnzbd
-* qbittorrent (hotio, with vpn support)
+* qbittorrent (using network_mode: service:gluetun)
 ### TORRENT MANAGEMENT
 * qbit-manage
 * autobrr
@@ -33,7 +35,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### HOME THEATRE
 * plex
 * tautulli
-* overseerr (allow users to request media)
+* jellyseerr (allow users to request media)
 * maintainerr (automated Plex library maintenance)
 ### BOOKS & PDF
 * calibre-web
@@ -42,5 +44,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### SYSTEM MONITORING
 * notifiarr
 * dozzle
+* beszel and beszel-agent (system monitoring and alerting)
 
-Requires docker-compose.yaml and .env file in the same directory.
+Requires docker-compose.yaml and .env file in the same directory, container folders beneath.
