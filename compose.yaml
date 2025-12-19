@@ -414,6 +414,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
