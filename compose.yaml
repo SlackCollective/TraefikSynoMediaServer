@@ -658,6 +658,7 @@ services:
       - $DATADIR/media:/data/media:rw
       - $DATADIR/media/tv:/tv:rw
       - $DATADIR/media/movies:/movies:rw
+      - $DATADIR/media/temp:/temp
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -706,8 +707,8 @@ services:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
       - $APPDIR/tdarr/logs:/app/logs
-      - $APPDIR/tdarr/temp:/temp
       - ${DATADIR}/media:/data/media:rw
+      - $DATADIR/media/temp:/temp
     environment:
       - PUID=$PUID
       - PGID=$PGID
