@@ -34,11 +34,6 @@ services:
       - 89:80
       - 449:443
       - 127.0.0.1:8080:8080 # http api dashboard
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     command: # CLI arguments
       # Dashboard, Ping, Telemetry
       - --global.sendAnonymousUsage=true
@@ -100,6 +95,11 @@ services:
       - CF_API_EMAIL=$CF_EMAIL
       - CF_API_KEY=$CF_API_KEY
       - DOMAINNAME # Passing the domain name to use the variable in rules.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers - Dashboard
       - traefik.http.routers.dashboard.entrypoints=https
@@ -151,6 +151,11 @@ services:
     volumes:
     - $DOCKERDIR/certs:/traefik:ro
     - $DOCKERDIR/certexports:/output:rw
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - traefik.enable=false
 
@@ -179,7 +184,7 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_UPSTREAM_RESOLVER_TYPE=doh
+      - DNS_UPSTREAM_RESOLVER_TYPE=dot
       - DNS_UPSTREAM_RESOLVERS=cloudflare,google,opendns
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
@@ -188,7 +193,7 @@ services:
       - UPDATER_PERIOD=24h
       - FIREWALL_VPN_INPUT_PORTS=51007
       - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
-      - LOG_LEVEL=error
+      - LOG_LEVEL=info
     logging:
       driver: "json-file"
       options:
@@ -259,6 +264,11 @@ services:
       - PROVIDERS_GOOGLE_CLIENT_SECRET=$GOOGLESECRET
       - SECRET=$SECRET
       - WHITELIST=$WHITELIST
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # HTTP Routers
       - traefik.http.routers.oauth.entrypoints=https
@@ -658,7 +668,7 @@ services:
       - $DATADIR/media:/data/media:rw
       - $DATADIR/media/tv:/tv:rw
       - $DATADIR/media/movies:/movies:rw
-      - $DATADIR/media/temp:/temp
+      - $DATADIR/media/temp:/temp:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -707,15 +717,14 @@ services:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
       - $APPDIR/tdarr/logs:/app/logs
-      - ${DATADIR}/media:/data/media:rw
-      - $DATADIR/media/temp:/temp
+      - $APPDIR/tdarr/temp:/temp:rw
+      - $DATADIR/media:/data/media:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
       - UMASK_SET=002
-      - serverIP=0.0.0.0
-      - serverPort=8266
+      - serverURL=http://0.0.0.0:8266
       - webUIPort=8265
       - internalNode=true
       - inContainer=true
@@ -847,9 +856,9 @@ services:
     networks:
       mediaserver:
     volumes:
-      - ${APPDIR}/maintainerr:/opt/data
+      - $APPDIR/maintainerr:/opt/data
     environment:
-      - TZ=${TZ}
+      - TZ=$TZ
     deploy:
       resources:
         limits:
@@ -978,7 +987,7 @@ services:
       - DOZZLE_FILTER="label=dozzle" # limits logging to containers with this label
       - DOZZLE_TAILSIZE=300
       - DOZZLE_ENABLE_ACTIONS=true
-      - TZ=${TZ}
+      - TZ=$TZ
       - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
     deploy:
       resources:
@@ -998,78 +1007,6 @@ services:
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Beszel server - docker stats server
-  beszel:
-    image: henrygd/beszel:latest
-    container_name: beszel
-    restart: unless-stopped
-    networks:
-      mediaserver:
-      socket-proxy:
-    ports:
-      - 8090:8090
-    volumes:
-      - $APPDIR/beszel:/beszel_data
-      - $APPDIR/beszel/socket:/beszel_socket
-    environment:
-      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.beszel.entrypoints=https
-      - traefik.http.routers.beszel.rule=Host(`beszel.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.beszel.middlewares=secured@file
-      # HTTP Services
-      - traefik.http.routers.beszel.service=beszel
-      - traefik.http.services.beszel.loadbalancer.server.port=8090
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Beszel agent - docker stats viewer
-  beszel-agent:
-    image: henrygd/beszel-agent
-    container_name: beszel-agent
-    restart: unless-stopped
-    networks:
-      mediaserver:
-      socket-proxy:
-    volumes:
-      - $APPDIR/beszel/agent:/var/lib/beszel-agent
-      - $APPDIR/beszel/socket:/beszel_socket
-    environment:
-      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
-      - LISTEN=45876
-      - HUB_URL=http://beszel:8090
-      - KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGiZuB/DmYTW/+BGFWCVZR7yWV7wTMLDuA/WEOdKT4l9
-      - TOKEN=607bbf96-d4bb-4397-886d-4e0d4e9dfbc7
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true

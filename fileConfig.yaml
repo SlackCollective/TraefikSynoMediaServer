@@ -18,8 +18,24 @@ http:
     asus:
       entryPoints:
         - https
-      rule: 'Host(`whatever)'
+      rule: 'Host(`asus.DOMAIN`)'
       service: asus
+      middlewares:
+        - "secured@file"
+
+    files:
+      entryPoints:
+        - https
+      rule: 'Host(`files.DOMAIN`)'
+      service: files
+      middlewares:
+        - "secured@file"
+
+    synology:
+      entryPoints:
+        - https
+      rule: 'Host(`synology.DOMAIN`)'
+      service: synology
       middlewares:
         - "secured@file"
         
@@ -30,6 +46,20 @@ http:
         serversTransport: insecureTransport
         servers:
           - url: https://192.168.1.1:8443
+        passHostHeader: true
+
+    files:
+      loadBalancer:
+        serversTransport: insecureTransport
+        servers:
+          - url: https://172.19.0.1:7001
+        passHostHeader: true
+          
+    synology:
+      loadBalancer:
+        serversTransport: insecureTransport
+        servers:
+          - url: https://172.19.0.1:2053
         passHostHeader: true
 
   # allow self-signed certificates for proxied web services
@@ -48,14 +78,14 @@ http:
           - X-Forwarded-User  
 
     # Only Allow Local networks
-    local-ipwhitelist:
-      ipAllowList:
-        sourceRange:
-          - 127.0.0.1/32 # localhost
-          - 10.0.0.0/8 # private class A
-          - 172.16.0.0/12 # private class B
-          - 192.168.0.0/16 # private class C
-          - 100.64.0.0/10 # Tailscale
+    # ipwhitelist:
+      # ipAllowList:
+        # sourceRange:
+          # - 127.0.0.1/32 # localhost
+          # - 10.0.0.0/8 # private class A
+          # - 172.16.0.0/12 # private class B
+          # - 192.168.0.0/16 # private class C
+          # - 100.0.0.0/8 # Tailscale
         # ipstrategy: # enable this when cloudflare proxy in use
           # depth: 1 # enable this when cloudflare proxy in use
 
