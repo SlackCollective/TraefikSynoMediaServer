@@ -15,46 +15,14 @@
 http:
   ## EXTERNAL ROUTING - use if you want to proxy something manually ##
   routers:
-    asus:
-      entryPoints:
-        - https
-      rule: 'Host(`asus.DOMAIN`)'
-      service: asus
-      middlewares:
-        - "secured@file"
-
-    files:
-      entryPoints:
-        - https
-      rule: 'Host(`files.DOMAIN`)'
-      service: files
-      middlewares:
-        - "secured@file"
-
     synology:
       entryPoints:
         - https
       rule: 'Host(`synology.DOMAIN`)'
       service: synology
-      middlewares:
-        - "secured@file"
         
   ## SERVICES ##
   services:
-    asus:
-      loadBalancer:
-        serversTransport: insecureTransport
-        servers:
-          - url: https://192.168.1.1:8443
-        passHostHeader: true
-
-    files:
-      loadBalancer:
-        serversTransport: insecureTransport
-        servers:
-          - url: https://172.19.0.1:7001
-        passHostHeader: true
-          
     synology:
       loadBalancer:
         serversTransport: insecureTransport
@@ -69,55 +37,6 @@ http:
 
   ## MIDDLEWARES ##
   middlewares:
-    # Oauth
-    oauth:
-      forwardauth:
-        address: http://oauth:4181
-        trustForwardHeader: true
-        authResponseHeaders:
-          - X-Forwarded-User  
-
-    # Only Allow Local networks
-    # ipwhitelist:
-      # ipAllowList:
-        # sourceRange:
-          # - 127.0.0.1/32 # localhost
-          # - 10.0.0.0/8 # private class A
-          # - 172.16.0.0/12 # private class B
-          # - 192.168.0.0/16 # private class C
-          # - 100.0.0.0/8 # Tailscale
-        # ipstrategy: # enable this when cloudflare proxy in use
-          # depth: 1 # enable this when cloudflare proxy in use
-
-    # Security headers
-    security-headers:
-      headers:
-        customResponseHeaders: # field names are case-insensitive
-          #X-Robots-Tag: "all,noarchive,nosnippet,notranslate,noimageindex"
-          Server: "" # prevent version disclosure
-          X-Powered-By: "" # prevent version disclosure
-          X-Forwarded-Proto: "https"
-          #Permissions-Policy: "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), gamepad=(), geolocation=(), gyroscope=(), hid=(), identity-credentials-get=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), otp-credentials=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), storage-access=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()"
-          #Cross-Origin-Embedder-Policy: "unsafe-none"
-          #Cross-Origin-Opener-Policy: "same-origin"
-          #Cross-Origin-Resource-Policy: "same-site"
-          #X-Permitted-Cross-Domain-Policies: "none"
-        sslProxyHeaders:
-          X-Forwarded-Proto: "https"
-        hostsProxyHeaders:
-          - "X-Forwarded-Host"
-        #customRequestHeaders:
-        #  X-Forwarded-Proto: "https"
-        contentTypeNosniff: false # X-Content-Type-Options
-        customFrameOptionsValue: "SAMEORIGIN" # X-Frame-Options
-        browserXssFilter: false # X-XSS-Protection; deprecated
-        referrerPolicy: "strict-origin-when-cross-origin" # Referrer-Policy
-        forceSTSHeader: false # HTTP-Strict-Transport-Security (HSTS)
-        stsIncludeSubdomains: true # HTTP-Strict-Transport-Security (HSTS)
-        stsSeconds: 63072000 # HTTP-Strict-Transport-Security (HSTS)
-        stsPreload: true # HTTP-Strict-Transport-Security (HSTS)
-        contentSecurityPolicy: "frame-ancestors *; upgrade-insecure-requests;" # Content-Security-Policy (CSP)
-
     crowdsec:
       plugin:
         bouncer:
@@ -146,30 +65,6 @@ http:
             - 172.16.0.0/12
             - 192.168.0.0/16
             - 100.0.0.0/8
-    # rate limiting
-    rate-limit:
-      rateLimit:
-        average: 100
-        period: 1
-        burst: 100
-
-    secured:
-      chain:
-        middlewares:
-        # - ipwhitelist
-        - security-headers
-        - oauth
-        - crowdsec
-        - rate-limit
-
-    nooauth:
-      chain:
-        middlewares:
-        # - ipwhitelist
-        - security-headers
-        # - oauth
-        - crowdsec
-        - rate-limit
 
 # Only use secure ciphers - https://ssl-config.mozilla.org/#server=traefik&version=2.9&config=intermediate&guideline=5.6
 tls:
