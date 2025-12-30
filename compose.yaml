@@ -654,8 +654,6 @@ services:
       - 32400:32400
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
-    group_add:
-      - "937"  # videodriver group on Synology
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
@@ -704,28 +702,27 @@ services:
       - 8266:8266 # server port
     devices:
       - /dev/dri:/dev/dri
-    group_add:
-      - "937"  # videodriver group on Synology
     volumes:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
       - $APPDIR/tdarr/logs:/app/logs
-      - $APPDIR/tdarr/temp:/temp:rw
+      - $DATADIR/media/temp:/temp:rw
       - $DATADIR/media:/data/media:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
       - UMASK_SET=002
-      - serverURL=http://0.0.0.0:8266
+      - serverBindIP=true
+      - serverURL=$TDARR_SERVER
       - webUIPort=8265
       - internalNode=true
       - inContainer=true
       - ffmpegVersion=7
       - nodeName=TdarrNode
       - auth=false
-      - openBrowser=true
-      - maxLogSizeMB=2
+      - openBrowser=false
+      - maxLogSizeMB=4
       - cronPluginUpdate=
     deploy:
       resources:
