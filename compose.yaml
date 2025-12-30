@@ -713,8 +713,8 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - UMASK_SET=002
-      - serverBindIP=true
-      - serverURL=$TDARR_SERVER
+      - serverIP=0.0.0.0
+      - serverPort=8266
       - webUIPort=8265
       - internalNode=true
       - inContainer=true
