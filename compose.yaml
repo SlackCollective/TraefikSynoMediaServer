@@ -529,6 +529,38 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # autobrr-no-rar - checks for rar, stops download if present
+  autobrrar:
+    image: ghcr.io/unhelpful7417/autobrr-no-rars:api
+    container_name: autobrrar
+    restart: unless-stopped
+    networks:
+      mediaserver:
+    ports:
+      - 7469:7469
+    user: $PUID:$PGID
+    init: true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    environment:
+      - TZ=$TZ
+      - serverPort=7469
+      - tlUsername=$TLUSER
+      - tlPassword=$TLPASS
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   ############################# MEDIA SEARCH/INDEX
   # Radarr - Movies
   radarr:
