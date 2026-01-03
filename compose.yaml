@@ -964,12 +964,15 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
+    ports:
+      - 5454:5454
     volumes:
       - $APPDIR/notifiarr:/config
+      - /var/run/utmp:/var/run/utmp
+      - /etc/machine-id:/etc/machine-id
     environment:
-      - TZ=$TZ
-      - DN_API_KEY=$NOTIFIARR
       - USER=docker
+      - TZ=$TZ
     deploy:
       resources:
         limits:
