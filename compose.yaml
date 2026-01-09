@@ -243,6 +243,8 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
+    ports:
+      - 4181:4181
     environment:
       - CONFIG=/config
       - COOKIE_DOMAIN=$DOMAINNAME
@@ -263,6 +265,9 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      # HTTP Routers
+      - traefik.http.routers.oauth.entrypoints=https
+      - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAINNAME`)
       # Middlewares
       - traefik.http.middlewares.oauth.forwardauth.address=http://oauth:4181
       - traefik.http.middlewares.oauth.forwardauth.authResponseHeaders=X-Forwarded-User
