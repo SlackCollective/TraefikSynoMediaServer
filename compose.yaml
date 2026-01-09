@@ -350,13 +350,13 @@ services:
         max-file: "3"
     labels:
       - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass (for NZB360)
       - traefik.http.routers.prowlarr-bypass.entrypoints=https
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       - traefik.http.routers.prowlarr-bypass.priority=100
-      # HTTP Routers
-      - traefik.http.routers.prowlarr.entrypoints=https
-      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=oauth,crowdsec@file
       # HTTP Services
@@ -396,13 +396,13 @@ services:
         max-file: "3"
     labels:
       - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.sabnzbd.entrypoints=https
+      - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sabnzbd-bypass.entrypoints=https
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
-      # HTTP Routers
-      - traefik.http.routers.sabnzbd.entrypoints=https
-      - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=oauth,crowdsec@file
       # HTTP Services
@@ -601,13 +601,13 @@ services:
         max-file: "3"
     labels:
       - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.radarr.entrypoints=https
+      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
       - traefik.http.routers.radarr-bypass.entrypoints=https
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       - traefik.http.routers.radarr-bypass.priority=100
-      # HTTP Routers
-      - traefik.http.routers.radarr.entrypoints=https
-      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.radarr.middlewares=oauth,crowdsec@file
       # HTTP Services
@@ -654,13 +654,13 @@ services:
         max-file: "3"
     labels:
       - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.sonarr.entrypoints=https
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
       - traefik.http.routers.sonarr-bypass.entrypoints=https
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       - traefik.http.routers.sonarr-bypass.priority=100
-      # HTTP Routers
-      - traefik.http.routers.sonarr.entrypoints=https
-      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=oauth,crowdsec@file
       # HTTP Services
