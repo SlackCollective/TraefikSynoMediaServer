@@ -134,6 +134,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      # HTTP Routers
+      - traefik.http.routers.socket.entrypoints=http
+      # HTTP Services
+      - traefik.http.routers.socket.service=socket
+      - traefik.http.services.socket.loadbalancer.server.port=2375
 
   # Certdumper - Export acme.json
   certdumper:
@@ -164,9 +170,11 @@ services:
     networks:
       mediaserver:
     ports:
+      - 8000:8000/tcp # gluetun control server
       - 9997:9997
     volumes:
       - $APPDIR/gluetun:/config
+      - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
     devices:
       - /dev/net/tun:/dev/net/tun
     environment:
@@ -187,6 +195,7 @@ services:
       - UPDATER_PERIOD=0 #DNS Update was causing qbit to lose connection
       - FIREWALL_VPN_INPUT_PORTS=51007
       - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
+      - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
       - LOG_LEVEL=info
     logging:
       driver: "json-file"
@@ -195,6 +204,12 @@ services:
         max-file: "3"
     labels:
       - dozzle ## Log viewer
+      # HTTP Routers
+      - traefik.http.routers.gluetun.entrypoints=https
+      - traefik.http.routers.gluetun.rule=Host(`gluetun.$DOMAINNAME`)
+      # HTTP Services
+      - traefik.http.routers.gluetun.service=gluetun
+      - traefik.http.services.gluetun.loadbalancer.server.port=8000
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
