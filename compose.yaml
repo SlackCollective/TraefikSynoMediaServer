@@ -117,6 +117,7 @@ services:
     restart: unless-stopped
     networks:
       socket-proxy:
+      mediaserver:
     ports:
       - 2375:2375
     read_only: true
@@ -156,6 +157,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      - traefik.enable=false
 
   # Gluetun - VPN for torrents
   gluetun:
@@ -223,6 +226,7 @@ services:
     restart: unless-stopped
     networks:
       - mediaserver
+      - socket-proxy
     ports:
       - 127.0.0.1:9876:8080 # mapping for local firewall bouncers
       - 6060:6060 # metrics endpoint for prometheus
@@ -245,6 +249,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
