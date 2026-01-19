@@ -65,6 +65,7 @@ services:
       - --accesslog.filters.statuscodes=400-599 # only log http errors in logs; alternatively set 200-599 to include successful http requests
       - --accesslog.fields.headers.defaultmode=drop # drop all headers
       - --accesslog.fields.headers.names.user-agent=keep # keep user-agent header
+      - --metrics.prometheus=true
       # TLS
       - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
@@ -117,7 +118,6 @@ services:
     restart: unless-stopped
     networks:
       socket-proxy:
-      mediaserver:
     ports:
       - 2375:2375
     read_only: true
@@ -136,11 +136,12 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      - traefik.enable=false
       # HTTP Routers
-      - traefik.http.routers.socket.entrypoints=http
+      # - traefik.http.routers.socket.entrypoints=http
       # HTTP Services
-      - traefik.http.routers.socket.service=socket
-      - traefik.http.services.socket.loadbalancer.server.port=2375
+      # - traefik.http.routers.socket.service=socket
+      # - traefik.http.services.socket.loadbalancer.server.port=2375
 
   # Certdumper - Export acme.json
   certdumper:
@@ -187,9 +188,9 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=off # not advised by container dev
-      # - DNS_UPSTREAM_RESOLVER_TYPE=dot # uncomment if internal DNS on
-      # - DNS_UPSTREAM_RESOLVERS=cloudflare,google,opendns #uncomment
+      - DNS_SERVER=on # not advised by container dev
+      - DNS_UPSTREAM_RESOLVER_TYPE=doh # uncomment if internal DNS on. dot for tls, doh for http
+      - DNS_UPSTREAM_RESOLVERS=cloudflare,google,opendns #uncomment
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
@@ -225,8 +226,8 @@ services:
     container_name: crowdsec
     restart: unless-stopped
     networks:
-      - mediaserver
       - socket-proxy
+      - mediaserver
     ports:
       - 127.0.0.1:9876:8080 # mapping for local firewall bouncers
       - 6060:6060 # metrics endpoint for prometheus
@@ -580,6 +581,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -708,7 +710,14 @@ services:
     networks:
       mediaserver:
     ports:
-      - 32400:32400
+      - 32400:32400/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     volumes:
