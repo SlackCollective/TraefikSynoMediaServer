@@ -80,8 +80,8 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
       # Plugins
-      - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      - --experimental.plugins.bouncer.version=v1.4.6
+      # - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      # - --experimental.plugins.bouncer.version=v1.4.6
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
@@ -102,7 +102,7 @@ services:
       - traefik.http.routers.dashboard.entrypoints=https
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.dashboard.middlewares=oauth
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       ## Updating and notifications
@@ -188,9 +188,10 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=on # not advised by container dev
-      - DNS_UPSTREAM_RESOLVER_TYPE=doh # uncomment if internal DNS on. dot for tls, doh for http
-      - DNS_UPSTREAM_RESOLVERS=cloudflare,google,opendns #uncomment
+      - DNS_SERVER=on
+      - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
+      - DNS_UPSTREAM_RESOLVERS=cloudflare
+      - WIREGUARD_MTU=1380
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
@@ -214,43 +215,6 @@ services:
       # HTTP Services
       - traefik.http.routers.gluetun.service=gluetun
       - traefik.http.services.gluetun.loadbalancer.server.port=8000
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # Crowdsec - blacklist threats
-  crowdsec:
-    image: crowdsecurity/crowdsec:v1.7.3
-    container_name: crowdsec
-    restart: unless-stopped
-    networks:
-      - socket-proxy
-      - mediaserver
-    ports:
-      - 127.0.0.1:9876:8080 # mapping for local firewall bouncers
-      - 6060:6060 # metrics endpoint for prometheus
-      - 7422:7422 # appsec waf endpoint
-    volumes:
-      # crowdsec container data
-      - $APPDIR/crowdsec/data:/var/lib/crowdsec/data
-      - $APPDIR/crowdsec/etc:/etc/crowdsec
-      # log bind mounts into crowdsec
-      - ../../var/log/auth.log:/var/log/auth.log:ro
-      - ../../var/log/syslog.log:/var/log/syslog:ro
-      - $APPDIR/traefik/logs:/var/log/traefik:ro
-    environment:
-      - GID=$PGID
-      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/sshd crowdsecurity/linux crowdsecurity/appsec-generic-rules crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-crs
-      - CUSTOM_HOSTNAME=brunswick-crowdsec
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -308,6 +272,8 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
+    ports:
+      - 9999:80
     volumes:
       - $APPDIR/organizr:/config
     environment:
@@ -328,7 +294,7 @@ services:
       - traefik.http.routers.organizr.entrypoints=https
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.organizr.middlewares=oauth,crowdsec@file
+      # - traefik.http.routers.organizr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -379,7 +345,7 @@ services:
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       - traefik.http.routers.prowlarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.prowlarr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.prowlarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -425,7 +391,7 @@ services:
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.sabnzbd.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -470,7 +436,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.qbittorrent.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
@@ -511,7 +477,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.qbitmanage.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
@@ -545,7 +511,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=https
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.autobrr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
@@ -631,7 +597,7 @@ services:
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       - traefik.http.routers.radarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.radarr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.radarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -684,7 +650,7 @@ services:
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       - traefik.http.routers.sonarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sonarr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.sonarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -725,7 +691,7 @@ services:
       - $DATADIR/media:/data/media:rw
       - $DATADIR/media/tv:/tv:rw
       - $DATADIR/media/movies:/movies:rw
-      - $DATADIR/media/temp:/temp:rw
+      - $DATADIR/media/temp/plex:/temp:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -772,7 +738,7 @@ services:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
       - $APPDIR/tdarr/logs:/app/logs
-      - $DATADIR/media/temp:/temp:rw
+      - $APPDIR/tdarr/temp:/temp:rw
       - $DATADIR/media:/data/media:rw
     environment:
       - PUID=$PUID
@@ -805,7 +771,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=https
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.tdarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.tdarr.service=tdarr
       - traefik.http.services.tdarr.loadbalancer.server.port=8265
@@ -852,7 +818,7 @@ services:
       - traefik.http.routers.tautulli-bypass.entrypoints=https
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.tautulli.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -929,7 +895,7 @@ services:
       - traefik.http.routers.maintainerr.entrypoints=https
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.maintainerr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
@@ -979,7 +945,7 @@ services:
       - traefik.http.routers.books.entrypoints=https
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.books.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.books.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -1022,7 +988,7 @@ services:
       - traefik.http.routers.notifiarr.entrypoints=https
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.notifiarr.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
@@ -1062,7 +1028,7 @@ services:
       - traefik.http.routers.dozzle.entrypoints=https
       - traefik.http.routers.dozzle.rule=Host(`dozzle.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dozzle.middlewares=oauth,crowdsec@file
+      - traefik.http.routers.dozzle.middlewares=oauth
       # HTTP Services
       - traefik.http.routers.dozzle.service=dozzle
       - traefik.http.services.dozzle.loadbalancer.server.port=8080
