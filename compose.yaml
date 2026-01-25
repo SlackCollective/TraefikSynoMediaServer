@@ -52,13 +52,11 @@ services:
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
       # Redirect to https
-      - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       - --entrypoints.http.http.redirections.entrypoint.permanent=true
       # Logging
-      - --accesslog=true
+      - --entryPoints.http.observability.accessLogs=true
       - --accesslog.filepath=/logs/access.log
       - --accesslog.format=json
       - --accesslog.bufferingsize=0
@@ -79,9 +77,6 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
-      # Plugins
-      # - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      # - --experimental.plugins.bouncer.version=v1.4.6
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
@@ -137,11 +132,6 @@ services:
         max-file: "3"
     labels:
       - traefik.enable=false
-      # HTTP Routers
-      # - traefik.http.routers.socket.entrypoints=http
-      # HTTP Services
-      # - traefik.http.routers.socket.service=socket
-      # - traefik.http.services.socket.loadbalancer.server.port=2375
 
   # Certdumper - Export acme.json
   certdumper:
@@ -151,8 +141,8 @@ services:
     networks:
       mediaserver:
     volumes:
-    - $DOCKERDIR/certs:/traefik:ro
-    - $DOCKERDIR/certexports:/output:rw
+      - $DOCKERDIR/certs:/traefik:ro
+      - $DOCKERDIR/certexports:/output:rw
     logging:
       driver: "json-file"
       options:
