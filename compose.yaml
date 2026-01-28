@@ -77,6 +77,9 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
+      # Plugins
+      # - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      # - --experimental.plugins.bouncer.version=v1.4.6
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
@@ -132,6 +135,11 @@ services:
         max-file: "3"
     labels:
       - traefik.enable=false
+      # HTTP Routers
+      # - traefik.http.routers.socket.entrypoints=http
+      # HTTP Services
+      # - traefik.http.routers.socket.service=socket
+      # - traefik.http.services.socket.loadbalancer.server.port=2375
 
   # Certdumper - Export acme.json
   certdumper:
@@ -397,10 +405,6 @@ services:
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
-        restart: true
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -434,7 +438,25 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      
+
+  # restart-qbittorrent - restart qbit when Gluetun reconnects
+  restart-qbittorrent:
+    image: jakub95/restart-qbittorrent:latest
+    container_name: restartqbit
+    restart: unless-stopped
+    networks:
+      socket-proxy:
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_started
+    environment:
+      - DOCKER_HOST=tcp://socket:2375 # necessary unless you add docker.sock as volume
+      - TZ=$TZ
+      - QBITTORRENT_CONTAINER_NAME=qbittorrent
+      - GLUETUN_CONTAINER_NAME=gluetun
+
   # qbit_manage - torrent client management
   qbit_manage:
     image: bobokun/qbit_manage
