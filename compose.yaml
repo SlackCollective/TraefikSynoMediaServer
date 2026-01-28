@@ -456,7 +456,18 @@ services:
       - TZ=$TZ
       - QBITTORRENT_CONTAINER_NAME=qbittorrent
       - GLUETUN_CONTAINER_NAME=gluetun
-
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - traefik.enable=false
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
   # qbit_manage - torrent client management
   qbit_manage:
     image: bobokun/qbit_manage
