@@ -12,7 +12,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 # Containers in use:
 ### WEBSERVER/REVERSE PROXY/DNS/VPN
 * traefik
-* socket proxy
 ### VPN
 * Gluetun (supports multiple VPN providers)
 ### AUTH
@@ -43,7 +42,6 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
 * notifiarr
-* dozzle
-* beszel and beszel-agent (system monitoring and alerting)
+* dockhand
 
 Requires docker-compose.yaml and .env file in the same directory, container folders beneath.
