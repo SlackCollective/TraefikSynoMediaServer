@@ -808,6 +808,7 @@ services:
         condition: service_healthy
     volumes:
       - $APPDIR/jellyseerr:/app/config
+      - $APPDIR/jellyseerr/cache:/app/config/cache/images
       - $DATADIR/media:/data/media
     environment:
       - TZ=$TZ
