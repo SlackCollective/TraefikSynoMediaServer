@@ -202,7 +202,7 @@ services:
       - SERVER_COUNTRIES=Netherlands
       - UPDATER_PERIOD=0 #DNS Update was causing qbit to lose connection
       - FIREWALL_VPN_INPUT_PORTS=51007
-      - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
+      # - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
       - LOG_LEVEL=error
     logging:
@@ -380,6 +380,7 @@ services:
       - TZ=$TZ
       - WEBUI_PORT=9997
       - TORRENTING_PORT=51007
+      - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod
     deploy:
       resources:
         limits:
