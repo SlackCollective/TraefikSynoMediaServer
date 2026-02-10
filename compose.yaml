@@ -192,7 +192,7 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=on
+      - DNS_SERVER=off
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
@@ -202,28 +202,14 @@ services:
       - SERVER_COUNTRIES=Netherlands
       - UPDATER_PERIOD=0 #DNS Update was causing qbit to lose connection
       - FIREWALL_VPN_INPUT_PORTS=51007
-      # - FIREWALL_OUTBOUND_SUBNETS=$FIREWALL_SUBNETS
+      - BLOCK_MALICIOUS=no
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
-      - LOG_LEVEL=error
+      - LOG_LEVEL=info
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.gluetun.entrypoints=https
-      - traefik.http.routers.gluetun.rule=Host(`gluetun.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.gluetun.middlewares=auth
-      # HTTP Services
-      - traefik.http.routers.gluetun.service=gluetun
-      - traefik.http.services.gluetun.loadbalancer.server.port=8000
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
