@@ -775,16 +775,17 @@ services:
       - org.hotio.pullio.generic.webhook=$PULLIO
 
   # Seer - Allows Plex users to request media
-  jellyseerr:
-    image: fallenbagel/jellyseerr
-    container_name: jellyseerr
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    init: true
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1"]
-      interval: 30s
-      timeout: 5s
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
       retries: 3
-      start_period: 30s
     networks:
       mediaserver:
     ports:
@@ -793,12 +794,11 @@ services:
       plex:
         condition: service_healthy
     volumes:
-      - $APPDIR/jellyseerr:/app/config
-      - $APPDIR/jellyseerr/cache:/app/config/cache/images
-      - $DATADIR/media:/data/media
+      - $APPDIR/seerr:/app/config
     environment:
-      - TZ=$TZ
       - LOG_LEVEL=error
+      - TZ=$TZ
+      - PORT=5055
     deploy:
       resources:
         limits:
@@ -921,6 +921,8 @@ services:
     image: fnsys/dockhand:latest
     container_name: dockhand
     restart: unless-stopped
+    group_add:
+      - "101"  # Use host's Docker GID
     networks:
       mediaserver:
     ports:
