@@ -34,7 +34,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### HOME THEATRE
 * plex
 * tautulli
-* jellyseerr (allow users to request media)
+* seerr (allow users to request media)
 * maintainerr (automated Plex library maintenance)
 ### BOOKS & PDF
 * calibre-web
