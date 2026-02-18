@@ -923,8 +923,8 @@ services:
     image: fnsys/dockhand:latest
     container_name: dockhand
     restart: unless-stopped
-    group_add:
-      - "101"  # Use host's Docker GID
+    # group_add:
+      # - "101"  # Use host's Docker GID
     networks:
       mediaserver:
     ports:
