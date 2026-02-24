@@ -60,7 +60,7 @@ services:
       # TLS
       - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
-      - --certificatesresolvers.cloudflare.acme.tlschallenge=true # disable this and enable below to avoid rate-limiting
+      # - --certificatesresolvers.cloudflare.acme.tlschallenge=true # disable this and enable below to avoid rate-limiting
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
       - --entrypoints.https.http.tls.certresolver=cloudflare
       - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
@@ -208,6 +208,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
@@ -355,6 +361,9 @@ services:
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -368,7 +377,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -388,7 +397,7 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-
+      
   # qbit_restart - torrent client restart when gluetun fails
   restart-qbittorrent:
     image: jakub95/restart-qbittorrent:latest
@@ -454,12 +463,6 @@ services:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -X GET 'http://127.0.0.1:7474/api/healthz/readiness' -H 'X-API-Token: $AUTOBRR_API_KEY' || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
     networks:
       mediaserver:
     ports:
@@ -468,17 +471,17 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
       - $APPDIR/autobrr/logs:/logs
-    environment:
-      - GOMAXPROCS=2
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    environment:
+      - GOMAXPROCS=2
     labels:
       # HTTP Routers
       - traefik.http.routers.autobrr.entrypoints=https
@@ -512,7 +515,7 @@ services:
       - 7878:7878
     depends_on:
       prowlarr:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - $APPDIR/radarr:/config
       - $DATADIR:/data
@@ -566,7 +569,7 @@ services:
       - 8989:8989
     depends_on:
       prowlarr:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - $APPDIR/sonarr:/config
       - $DATADIR:/data
@@ -762,6 +765,7 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.tautulli-bypass.entrypoints=https
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
+      - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
       - traefik.http.routers.tautulli.middlewares=auth
       # HTTP Services
@@ -847,7 +851,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -922,8 +926,8 @@ services:
     image: fnsys/dockhand:latest
     container_name: dockhand
     restart: unless-stopped
-    # group_add:
-      # - "101"  # Use host's Docker GID
+    group_add:
+      - "101"  # Use host's Docker GID
     networks:
       mediaserver:
     ports:
