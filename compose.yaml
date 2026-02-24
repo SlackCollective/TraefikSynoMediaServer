@@ -56,7 +56,7 @@ services:
       - --accesslog.filters.statuscodes=400-599 # only log http errors in logs; alternatively set 200-599 to include successful http requests
       - --accesslog.fields.headers.defaultmode=drop # drop all headers
       - --accesslog.fields.headers.names.user-agent=keep # keep user-agent header
-      - --metrics.prometheus=true
+      - --metrics.prometheus=false
       # TLS
       - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
@@ -70,9 +70,6 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
-      # Plugins
-      # - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      # - --experimental.plugins.bouncer.version=v1.4.6
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
@@ -114,7 +111,7 @@ services:
       interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 15s
     networks:
       mediaserver:
     ports:
@@ -167,7 +164,7 @@ services:
 
   # Gluetun - VPN for torrents
   gluetun:
-    image: qmcgaw/gluetun:latest
+    image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun
     restart: unless-stopped
     cap_add:
