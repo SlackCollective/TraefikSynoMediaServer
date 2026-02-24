@@ -468,6 +468,8 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
       - $APPDIR/autobrr/logs:/logs
+    environment:
+      - GOMAXPROCS=2
     deploy:
       resources:
         limits:
