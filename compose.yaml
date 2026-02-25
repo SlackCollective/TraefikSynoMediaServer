@@ -35,10 +35,10 @@ services:
       - --ping=true
       # Providers, Entrypoints
       - --providers.docker=true
+      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       # - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
       - --providers.docker.network=mediaserver
-      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
@@ -60,7 +60,7 @@ services:
       # TLS
       - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
-      # - --certificatesresolvers.cloudflare.acme.tlschallenge=true # disable this and enable below to avoid rate-limiting
+      # - --certificatesresolvers.cloudflare.acme.tlschallenge=true # in testing, enable below to avoid rate-limiting
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
       - --entrypoints.https.http.tls.certresolver=cloudflare
       - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
@@ -80,7 +80,7 @@ services:
       - TZ=$TZ
       - CF_API_EMAIL=$CF_EMAIL
       - CF_API_KEY=$CF_API_KEY
-      - DOMAINNAME # Passing the domain name to use the variable in rules.
+      - DOMAINNAME # Passing this to use the variable in rules.
     logging:
       driver: "json-file"
       options:
@@ -162,7 +162,7 @@ services:
     labels:
       - traefik.enable=false
 
-  # Gluetun - VPN for torrents
+  # Gluetun - VPN for torrents, then a healthcheck/restart container for dependencies
   gluetun:
     image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun
@@ -266,7 +266,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 15s
     networks:
       mediaserver:
     ports:
@@ -397,7 +397,7 @@ services:
       - org.hotio.pullio.update=true
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
-      
+
   # qbit_restart - torrent client restart when gluetun fails
   restart-qbittorrent:
     image: jakub95/restart-qbittorrent:latest
@@ -408,6 +408,7 @@ services:
       - TZ=$TZ
       - QBITTORRENT_CONTAINER_NAME=qbittorrent
       - GLUETUN_CONTAINER_NAME=gluetun
+      - DOCKER_HOST=tcp://socket:2375
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
@@ -737,7 +738,7 @@ services:
       start_period: 30s
     depends_on:
       plex:
-        condition: service_started
+        condition: service_healthy
     networks:
       mediaserver:
     ports:
@@ -797,7 +798,7 @@ services:
       - 5055:5055
     depends_on:
       plex:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - $APPDIR/seerr:/app/config
     environment:
@@ -830,15 +831,9 @@ services:
 
   # Maintainerr - Scrub requested but unwatched media
   maintainerr:
-    image: jorenn92/maintainerr:latest
+    image: ghcr.io/maintainerr/maintainerr:latest
     container_name: maintainerr
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6246/api/app/status || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
     user: $PUID:$PGID
     networks:
       mediaserver:
@@ -927,7 +922,7 @@ services:
     container_name: dockhand
     restart: unless-stopped
     group_add:
-      - "101"  # Use host's Docker GID
+      - "65540"  # Use host's Docker GID
     networks:
       mediaserver:
     ports:
@@ -940,6 +935,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - DOCKER_HOST=tcp://socket:2375
       - HOST_DATA_DIR=$APPDIR/dockhand
       - SKIP_DF_COLLECTION=true
     deploy:
