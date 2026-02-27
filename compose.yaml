@@ -52,7 +52,7 @@ services:
       - --entryPoints.http.observability.accessLogs=true
       - --accesslog.filepath=/logs/access.log
       - --accesslog.format=json
-      - --accesslog.bufferingsize=0
+      - --accesslog.bufferingsize=200
       - --accesslog.filters.statuscodes=400-599 # only log http errors in logs; alternatively set 200-599 to include successful http requests
       - --accesslog.fields.headers.defaultmode=drop # drop all headers
       - --accesslog.fields.headers.names.user-agent=keep # keep user-agent header
@@ -198,7 +198,7 @@ services:
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
       - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=60s
       - SERVER_COUNTRIES=Netherlands
-      - UPDATER_PERIOD=0 #DNS Update was causing qbit to lose connection
+      - UPDATER_PERIOD=24h #Frequent DNS Update was causing qbit to lose connection
       - FIREWALL_VPN_INPUT_PORTS=51007
       - BLOCK_MALICIOUS=no
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
@@ -208,12 +208,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    labels:
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
@@ -404,11 +398,13 @@ services:
     container_name: restart-qbittorrent
     restart: unless-stopped
     network_mode: none
+    depends_on:
+      qbittorrent:
+        condition: service_started
     environment:
       - TZ=$TZ
       - QBITTORRENT_CONTAINER_NAME=qbittorrent
       - GLUETUN_CONTAINER_NAME=gluetun
-      - DOCKER_HOST=tcp://socket:2375
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
@@ -426,6 +422,9 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
+    depends_on:
+      qbittorrent:
+        condition: service_started
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -632,6 +631,8 @@ services:
       - 32414:32414/udp
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
+    group_add:
+      - "937"  # videodriver group on Synology
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
@@ -678,6 +679,8 @@ services:
       - 8266:8266 # server port
     devices:
       - /dev/dri:/dev/dri
+    group_add:
+      - "937"  # videodriver group on Synology
     volumes:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
@@ -703,7 +706,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
+          memory: 1024M
     logging:
       driver: "json-file"
       options:
