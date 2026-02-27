@@ -25,6 +25,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * qbittorrent (using network_mode: service:gluetun)
 ### TORRENT MANAGEMENT
 * qbit-manage
+* qbit-restart (checks gluetun logs, restarts qbit when VPN alive)
 * autobrr
 ### MEDIA SEARCH
 * sonarr
