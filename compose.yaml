@@ -638,12 +638,13 @@ services:
       - $DATADIR/media:/data/media:rw
       - $DATADIR/media/tv:/tv:rw
       - $DATADIR/media/movies:/movies:rw
-      - $DATADIR/media/temp/plex:/temp:rw
+      - $APPDIR/plex/temp:/temp:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
       - VERSION=docker
+      - UMASK=002
     deploy:
       resources:
         limits:
