@@ -811,7 +811,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1024M
     logging:
       driver: "json-file"
       options:
@@ -980,7 +980,7 @@ services:
       - /var/run/utmp:/var/run/utmp
       - /etc/machine-id:/etc/machine-id
     environment:
-      - USER=docker
+      - USER=$PUID
       - TZ=$TZ
     deploy:
       resources:
