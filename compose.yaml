@@ -169,6 +169,7 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+      - SYS_MODULE
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
@@ -181,6 +182,7 @@ services:
     volumes:
       - $APPDIR/gluetun:/config
       - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
+      - /lib/modules:/lib/modules:ro
     devices:
       - /dev/net/tun:/dev/net/tun
     environment:
@@ -199,10 +201,11 @@ services:
       - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=60s
       - SERVER_COUNTRIES=Netherlands
       - UPDATER_PERIOD=24h #Frequent DNS Update was causing qbit to lose connection
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.18.0.0/16
       - FIREWALL_VPN_INPUT_PORTS=51007
       - BLOCK_MALICIOUS=no
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=error
     logging:
       driver: "json-file"
       options:
@@ -225,10 +228,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -273,10 +272,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
     logging:
       driver: "json-file"
       options:
@@ -320,10 +315,6 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - HAS_IPV6=false
-    deploy:
-      resources:
-        limits:
-          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -368,10 +359,6 @@ services:
       - WEBUI_PORT=9997
       - TORRENTING_PORT=51007
       - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod
-    deploy:
-      resources:
-        limits:
-          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -434,10 +421,6 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - QBT_WEB_SERVER=true
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -471,10 +454,6 @@ services:
     volumes:
       - $APPDIR/autobrr:/config
       - $APPDIR/autobrr/logs:/logs
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -523,10 +502,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -577,10 +552,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -645,10 +616,6 @@ services:
       - TZ=$TZ
       - VERSION=docker
       - UMASK=002
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
     logging:
       driver: "json-file"
       options:
@@ -704,10 +671,6 @@ services:
       - openBrowser=false
       - maxLogSizeMB=4
       - cronPluginUpdate=
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
     logging:
       driver: "json-file"
       options:
@@ -754,10 +717,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -789,7 +748,6 @@ services:
     container_name: seerr
     init: true
     restart: unless-stopped
-    user: $PUID:$PGID
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
       start_period: 20s
@@ -800,6 +758,8 @@ services:
       mediaserver:
     ports:
       - 5055:5055
+    dns:
+      - 8.8.8.8
     depends_on:
       plex:
         condition: service_healthy
@@ -809,10 +769,6 @@ services:
       - LOG_LEVEL=error
       - TZ=$TZ
       - PORT=5055
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
     logging:
       driver: "json-file"
       options:
@@ -847,10 +803,6 @@ services:
       - $APPDIR/maintainerr:/opt/data
     environment:
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -895,10 +847,6 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
@@ -942,10 +890,6 @@ services:
       - DOCKER_HOST=tcp://socket:2375
       - HOST_DATA_DIR=$APPDIR/dockhand
       - SKIP_DF_COLLECTION=true
-    deploy:
-      resources:
-        limits:
-          memory: 512M
     logging:
       driver: "json-file"
       options:
@@ -983,10 +927,6 @@ services:
     environment:
       - USER=$PUID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 128M
     logging:
       driver: "json-file"
       options:
@@ -1021,10 +961,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-    deploy:
-      resources:
-        limits:
-          memory: 256M
     logging:
       driver: "json-file"
       options:
