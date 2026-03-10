@@ -178,7 +178,6 @@ services:
     ports:
       - 8000:8000/tcp # gluetun control server
       - 9997:9997 # qBit WebUI
-      - 51007:51007 # qBit listening port
     volumes:
       - $APPDIR/gluetun:/config
       - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
@@ -748,6 +747,7 @@ services:
     container_name: seerr
     init: true
     restart: unless-stopped
+    user: $PUID:$PGID
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
       start_period: 20s
@@ -758,8 +758,6 @@ services:
       mediaserver:
     ports:
       - 5055:5055
-    dns:
-      - 8.8.8.8
     depends_on:
       plex:
         condition: service_healthy
