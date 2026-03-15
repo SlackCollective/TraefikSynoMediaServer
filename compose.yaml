@@ -178,6 +178,7 @@ services:
     ports:
       - 8000:8000/tcp # gluetun control server
       - 9997:9997 # qBit WebUI
+      # - 51007:51007 # qBit listening port
     volumes:
       - $APPDIR/gluetun:/config
       - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
@@ -210,6 +211,15 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    labels:
+      # HTTP Routers
+      - traefik.http.routers.gluetun.entrypoints=https
+      - traefik.http.routers.gluetun.rule=Host(`gluetun.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.gluetun.middlewares=auth
+      # HTTP Services
+      - traefik.http.routers.gluetun.service=gluetun
+      - traefik.http.services.gluetun.loadbalancer.server.port=8000
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
@@ -345,9 +355,6 @@ services:
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
