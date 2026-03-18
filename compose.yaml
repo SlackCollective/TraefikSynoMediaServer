@@ -205,6 +205,7 @@ services:
       - FIREWALL_VPN_INPUT_PORTS=51007
       - BLOCK_MALICIOUS=no
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
+      - WIREGUARD_MTU=1280
       - LOG_LEVEL=error
     logging:
       driver: "json-file"
@@ -213,13 +214,13 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.gluetun.entrypoints=https
-      - traefik.http.routers.gluetun.rule=Host(`gluetun.$DOMAINNAME`)
+      - traefik.http.routers.qbittorrent.entrypoints=https
+      - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.gluetun.middlewares=auth
+      - traefik.http.routers.qbittorrent.middlewares=auth
       # HTTP Services
-      - traefik.http.routers.gluetun.service=gluetun
-      - traefik.http.services.gluetun.loadbalancer.server.port=8000
+      - traefik.http.routers.qbittorrent.service=qbittorrent
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
 
   ############################# HOMEPAGE
   # Organizr - A dashboard for your server
@@ -371,14 +372,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      # HTTP Routers
-      - traefik.http.routers.qbittorrent.entrypoints=https
-      - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=auth
-      # HTTP Services
-      - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
+      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -391,9 +385,6 @@ services:
     container_name: restart-qbittorrent
     restart: unless-stopped
     network_mode: none
-    depends_on:
-      qbittorrent:
-        condition: service_started
     environment:
       - TZ=$TZ
       - QBITTORRENT_CONTAINER_NAME=qbittorrent
@@ -415,9 +406,6 @@ services:
     restart: unless-stopped
     networks:
       mediaserver:
-    depends_on:
-      qbittorrent:
-        condition: service_started
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
