@@ -43,11 +43,8 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
-      # Redirect to https
+      # For headers
       - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
-      - --entrypoints.http.http.redirections.entrypoint.to=https
-      - --entrypoints.http.http.redirections.entrypoint.scheme=https
-      - --entrypoints.http.http.redirections.entrypoint.permanent=true
       # Logging
       - --entryPoints.http.observability.accessLogs=true
       - --accesslog.filepath=/logs/access.log
@@ -91,7 +88,7 @@ services:
       - traefik.http.routers.dashboard.entrypoints=https
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=auth
+      - traefik.http.routers.dashboard.middlewares=chain-auth@file
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
       ## Updating and notifications
@@ -127,10 +124,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.auth.entrypoints=https
       - traefik.http.routers.auth.rule=Host(`auth.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.middlewares.auth.forwardauth.address=http://auth:4181/portals/main
-      - traefik.http.middlewares.auth.forwardauth.authResponseHeaders=X-Forwarded-User,X-Forwarded-Displayname,X-Authenticated-User
-      - traefik.http.middlewares.auth.forwardauth.trustForwardHeader=true
       # HTTP Services
       - traefik.http.services.auth.loadbalancer.server.port=4181
       ## Updating and notifications
@@ -178,7 +171,6 @@ services:
     ports:
       - 8000:8000/tcp # gluetun control server
       - 9997:9997 # qBit WebUI
-      # - 51007:51007 # qBit listening port
     volumes:
       - $APPDIR/gluetun:/config
       - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
@@ -217,7 +209,7 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=auth
+      - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
@@ -248,7 +240,7 @@ services:
       - traefik.http.routers.organizr.entrypoints=https
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.organizr.middlewares=auth
+      - traefik.http.routers.organizr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.organizr.service=organizr
       - traefik.http.services.organizr.loadbalancer.server.port=80
@@ -296,7 +288,8 @@ services:
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       - traefik.http.routers.prowlarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.prowlarr.middlewares=auth
+      - traefik.http.routers.prowlarr.middlewares=chain-auth@file
+      - traefik.http.routers.prowlarr-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -339,7 +332,8 @@ services:
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=auth
+      - traefik.http.routers.sabnzbd.middlewares=chain-auth@file
+      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -425,7 +419,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=auth
+      - traefik.http.routers.qbitmanage.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
@@ -460,7 +454,7 @@ services:
       - traefik.http.routers.autobrr.entrypoints=https
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.autobrr.middlewares=auth
+      - traefik.http.routers.autobrr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.autobrr.service=autobrr
       - traefik.http.services.autobrr.loadbalancer.server.port=7474
@@ -510,7 +504,8 @@ services:
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       - traefik.http.routers.radarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.radarr.middlewares=auth
+      - traefik.http.routers.radarr.middlewares=chain-auth@file
+      - traefik.http.routers.radarr-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -560,7 +555,8 @@ services:
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       - traefik.http.routers.sonarr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sonarr.middlewares=auth
+      - traefik.http.routers.sonarr.middlewares=chain-auth@file
+      - traefik.http.routers.sonarr-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -675,7 +671,7 @@ services:
       - traefik.http.routers.tdarr.entrypoints=https
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.tdarr.middlewares=auth
+      - traefik.http.routers.tdarr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.tdarr.service=tdarr
       - traefik.http.services.tdarr.loadbalancer.server.port=8265
@@ -725,7 +721,8 @@ services:
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=auth
+      - traefik.http.routers.tautulli.middlewares=chain-auth@file
+      - traefik.http.routers.tautulli-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -772,7 +769,7 @@ services:
       - traefik.http.routers.overseerr.entrypoints=https
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.overseerr.middlewares=auth
+      - traefik.http.routers.overseerr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
       - traefik.http.services.overseerr.loadbalancer.server.port=5055
@@ -806,7 +803,7 @@ services:
       - traefik.http.routers.maintainerr.entrypoints=https
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=auth
+      - traefik.http.routers.maintainerr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
@@ -850,7 +847,7 @@ services:
       - traefik.http.routers.books.entrypoints=https
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.books.middlewares=auth
+      - traefik.http.routers.books.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.books.service=books
       - traefik.http.services.books.loadbalancer.server.port=8083
@@ -893,7 +890,7 @@ services:
       - traefik.http.routers.dockhand.entrypoints=https
       - traefik.http.routers.dockhand.rule=Host(`dockhand.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dockhand.middlewares=auth
+      - traefik.http.routers.dockhand.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.dockhand.service=dockhand
       - traefik.http.services.dockhand.loadbalancer.server.port=3000
@@ -930,7 +927,7 @@ services:
       - traefik.http.routers.notifiarr.entrypoints=https
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.notifiarr.middlewares=auth
+      - traefik.http.routers.notifiarr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.notifiarr.service=notifiarr
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
