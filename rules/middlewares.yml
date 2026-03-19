@@ -1,0 +1,47 @@
+---
+http:
+  middlewares:
+
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+
+    https-redirectscheme:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    compress:
+      compress: {}
+
+    secure-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+        accessControlMaxAge: 100
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+          #customFrameOptionsValue: "allow-from https:{{env "DOMAINNAME_CLOUD_SERVER"}}"
+        contentTypeNosniff: true
+        browserXssFilter: true
+      # sslForceHost: true # add sslHost to all of the services
+        # sslHost: "{{env "DOMAINNAME_CLOUD_SERVER"}}"
+        referrerPolicy: "same-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), vr=()"
+        customResponseHeaders:
+          X-Robots-Tag: "none,noarchive,nosnippet,notranslate,noimageindex,"
+          server: ""
+
+    auth:
+      forwardAuth:
+        address: "http://auth:4181/portals/main"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "X-Forwarded-User"
+          - "X-Forwarded-Displayname"
+          - "X-Authenticated-User"
