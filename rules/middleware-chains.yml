@@ -1,0 +1,25 @@
+http:
+  middlewares:
+    chain-authelia:
+      chain:
+        middlewares:
+          - "rate-limit"
+          - "secure-headers"
+          - "authelia"
+          - "https-redirectscheme"
+          - "compress"
+    chain-no-auth:
+      chain:
+        middlewares:
+          - "rate-limit"
+          - "secure-headers"
+          - "https-redirectscheme"
+          - "compress"
+    chain-basic-auth:
+      chain:
+        middlewares:
+          - "rate-limit"
+          - "secure-headers"
+          - "basic-auth"
+          - "https-redirectscheme"
+          - "compress"
