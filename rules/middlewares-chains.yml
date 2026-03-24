@@ -1,25 +1,18 @@
+  GNU nano 8.7                                                                 middlewares-chains.yml                                                                            
 http:
   middlewares:
-    chain-authelia:
+    chain-auth:
       chain:
         middlewares:
           - "rate-limit"
           - "secure-headers"
-          - "authelia"
+          - "auth"
           - "https-redirectscheme"
           - "compress"
-    chain-no-auth:
+    chain-noauth:
       chain:
         middlewares:
           - "rate-limit"
           - "secure-headers"
-          - "https-redirectscheme"
-          - "compress"
-    chain-basic-auth:
-      chain:
-        middlewares:
-          - "rate-limit"
-          - "secure-headers"
-          - "basic-auth"
           - "https-redirectscheme"
           - "compress"
