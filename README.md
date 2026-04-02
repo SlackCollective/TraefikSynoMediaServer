@@ -12,6 +12,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 # Containers in use:
 ### WEBSERVER/REVERSE PROXY/DNS/VPN
 * traefik
+* lsio socket-proxy
 ### VPN
 * Gluetun (supports multiple VPN providers)
 ### AUTH
