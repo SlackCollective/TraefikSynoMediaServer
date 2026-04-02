@@ -4,6 +4,10 @@ networks:
     driver: bridge
     name: mediaserver
     external: true
+  socket-proxy:
+    driver: bridge
+    name: socket-proxy
+    external: true
 
 services:
 ########################### REVERSE PROXY / NETWORKING / SECURITY    
@@ -11,7 +15,7 @@ services:
   traefik:
     image: traefik:v3
     container_name: traefik
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
@@ -22,21 +26,22 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+      socket-proxy:
     ports:
       - 89:80
       - 449:443
       - 127.0.0.1:8080:8080 # http api dashboard
     command: # CLI arguments
       # Dashboard, Ping, Telemetry
-      - --global.sendAnonymousUsage=true
+      - --global.sendAnonymousUsage=false
       - --global.checknewversion=true
       - --api.dashboard=true
       - --api.insecure=false
       - --ping=true
       # Providers, Entrypoints
       - --providers.docker=true
-      - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      # - --providers.docker.endpoint=tcp://socket:2375 # Enable for Socket Proxy. Disable otherwise.
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
+      - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
       - --providers.docker.exposedByDefault=true
       - --providers.docker.network=mediaserver
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
@@ -72,7 +77,7 @@ services:
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
       - $DOCKERDIR/certs:/certs
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TZ=$TZ
       - CF_API_EMAIL=$CF_EMAIL
@@ -97,6 +102,65 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # Socket-Proxy - Proxy for docker.sock to avoid direct exposure
+  socket-proxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: socket-proxy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /run
+    networks:
+      mediaserver:
+      socket-proxy:
+    ports:
+      - 2375:2375
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ALLOW_START=1 #optional
+      - ALLOW_STOP=1 #optional
+      - ALLOW_RESTARTS=1 #optional
+      - ALLOW_PAUSE=0 #optional
+      - ALLOW_UNPAUSE=0 #optional
+      - AUTH=1 #optional
+      - BUILD=0 #optional
+      - COMMIT=0 #optional
+      - CONFIGS=0 #optional
+      - CONTAINERS=1 #optional
+      - DISABLE_IPV6=1 #optional
+      - DISTRIBUTION=0 #optional
+      - EVENTS=1 #optional
+      - EXEC=1 #optional
+      - IMAGES=1 #optional
+      - INFO=1 #optional
+      - LOG_LEVEL=info #optional
+      - NETWORKS=1 #optional
+      - NODES=1 #optional
+      - PING=1 #optional
+      - PLUGINS=1 #optional
+      - POST=1 #optional
+      - SECRETS=0 #optional
+      - SERVICES=1 #optional
+      - SESSION=0 #optional
+      - SWARM=0 #optional
+      - SYSTEM=1 #optional
+      - TASKS=1 #optional
+      - TZ=$TZ #optional
+      - VERSION=1 #optional
+      - VOLUMES=1 #optional
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   # OAuth - Single Sign On using OAuth 2.0
   auth:
     image: ghcr.io/italypaleale/traefik-forward-auth:4
@@ -109,10 +173,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 4181:4181
     volumes:
       - $APPDIR/auth:/etc/traefik-forward-auth
     logging:
@@ -132,29 +196,6 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  # Certdumper - Export acme.json
-  certdumper:
-    image: ghcr.io/kereis/traefik-certs-dumper:latest
-    container_name: certdump
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "/usr/bin/healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      mediaserver:
-    volumes:
-      - $DOCKERDIR/certs:/traefik:ro
-      - $DOCKERDIR/certexports:/output:rw
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - traefik.enable=false
-
   # Gluetun - VPN for torrents, then a healthcheck/restart container for dependencies
   gluetun:
     image: qmcgaw/gluetun:v3.41.1
@@ -166,6 +207,8 @@ services:
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     ports:
@@ -195,10 +238,8 @@ services:
       - UPDATER_PERIOD=24h #Frequent DNS Update was causing qbit to lose connection
       - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.18.0.0/16
       - FIREWALL_VPN_INPUT_PORTS=51007
-      - BLOCK_MALICIOUS=no
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
-      - WIREGUARD_MTU=1280
-      - LOG_LEVEL=error
+      - LOG_LEVEL=info
     logging:
       driver: "json-file"
       options:
@@ -220,10 +261,10 @@ services:
     image: ghcr.io/organizr/organizr:latest
     container_name: organizr
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 9999:80
     volumes:
       - $APPDIR/organizr:/config
     environment:
@@ -262,6 +303,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     ports:
@@ -306,6 +349,8 @@ services:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     ports:
@@ -349,6 +394,8 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     network_mode: "service:gluetun"
     volumes:
       - $APPDIR/qbittorrent:/config:rw
@@ -378,13 +425,19 @@ services:
     image: jakub95/restart-qbittorrent:latest
     container_name: restart-qbittorrent
     restart: unless-stopped
-    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      mediaserver:
+      socket-proxy:
+    depends_on:
+      qbittorrent:
+        condition: service_started
     environment:
       - TZ=$TZ
       - QBITTORRENT_CONTAINER_NAME=qbittorrent
       - GLUETUN_CONTAINER_NAME=gluetun
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - DOCKER_HOST=tcp://socket-proxy:2375
     labels:
       - traefik.enable=false
       ## Updating and notifications
@@ -398,8 +451,13 @@ services:
     image: bobokun/qbit_manage
     container_name: qbitmanage
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
+    depends_on:
+      qbittorrent:
+        condition: service_started
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -434,10 +492,13 @@ services:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
     restart: unless-stopped
+    depends_on:
+      qbittorrent:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 7474:7474
     user: $PUID:$PGID
     volumes:
       - $APPDIR/autobrr:/config
@@ -476,10 +537,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 7878:7878
     depends_on:
       prowlarr:
         condition: service_healthy
@@ -527,10 +588,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 8989:8989
     depends_on:
       prowlarr:
         condition: service_healthy
@@ -579,17 +640,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     ports:
       - 32400:32400/tcp
-      - 8324:8324/tcp
-      - 32469:32469/tcp
-      - 1900:1900/udp
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     group_add:
@@ -597,8 +653,6 @@ services:
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
-      - $DATADIR/media/tv:/tv:rw
-      - $DATADIR/media/movies:/movies:rw
       - $APPDIR/plex/temp:/temp:rw
     environment:
       - PUID=$PUID
@@ -630,11 +684,10 @@ services:
     image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 8265:8265 # webUI port
-      - 8266:8266 # server port
     devices:
       - /dev/dri:/dev/dri
     group_add:
@@ -661,6 +714,9 @@ services:
       - openBrowser=false
       - maxLogSizeMB=4
       - cronPluginUpdate=
+      - NVIDIA_VISIBLE_DEVICES=void
+      - ffmpegVersion=6
+      - VAAPI_DEVICE=/dev/dri/renderD128
     logging:
       driver: "json-file"
       options:
@@ -696,10 +752,10 @@ services:
     depends_on:
       plex:
         condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 8181:8181
     volumes:
       - $APPDIR/tautulli:/config:rw
       - $PLEXLOGS:/plexlogs:rw
@@ -746,10 +802,10 @@ services:
       timeout: 3s
       interval: 15s
       retries: 3
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 5055:5055
     depends_on:
       plex:
         condition: service_healthy
@@ -787,8 +843,8 @@ services:
     user: $PUID:$PGID
     networks:
       mediaserver:
-    ports:
-      - 6246:6246
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - $APPDIR/maintainerr:/opt/data
     environment:
@@ -825,6 +881,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 90s
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     volumes:
@@ -865,19 +923,21 @@ services:
     restart: unless-stopped
     group_add:
       - "65540"  # Use host's Docker GID
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - socket-proxy
     networks:
       mediaserver:
-    ports:
-      - 3336:3000
+      socket-proxy:
     volumes:
       - $APPDIR/dockhand:/app/data:rw
       - $APPDIR:/compose
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOCKER_HOST=tcp://socket:2375
+      - DOCKER_HOST=tcp://socket-proxy:2375
       - HOST_DATA_DIR=$APPDIR/dockhand
       - SKIP_DF_COLLECTION=true
     logging:
@@ -906,10 +966,10 @@ services:
     container_name: notifiarr
     hostname: notifiarr #must be set, can be anything
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 5454:5454
     volumes:
       - $APPDIR/notifiarr:/config
       - /var/run/utmp:/var/run/utmp
@@ -943,6 +1003,8 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       mediaserver:
     volumes:
