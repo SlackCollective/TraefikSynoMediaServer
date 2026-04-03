@@ -231,7 +231,7 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=on # try off in the event of instability
+      - DNS_SERVER=off # try off in the event of instability
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
@@ -479,7 +479,7 @@ services:
     container_name: qbitmanage
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:9996/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -488,6 +488,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 9996:9996
     depends_on:
       qbittorrent:
         condition: service_healthy
@@ -499,6 +501,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - QBT_PORT=9996
       - QBT_WEB_SERVER=true
     logging:
       driver: "json-file"
@@ -513,7 +516,7 @@ services:
       - traefik.http.routers.qbitmanage.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
-      - traefik.http.services.qbitmanage.loadbalancer.server.port=8080
+      - traefik.http.services.qbitmanage.loadbalancer.server.port=9996
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
