@@ -10,9 +10,9 @@ Router ports forwarded to NAS:
 Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (external) > 89 (internal) if you want to be able to redirect all web traffic to https.
 
 # Containers in use:
-### WEBSERVER/REVERSE PROXY/DNS/VPN
+### WEBSERVER/REVERSE PROXY/DNS
 * traefik
-* lsio socket-proxy
+* lsio socket-proxy (avoiding direct container access to docker.sock)
 ### VPN
 * Gluetun (supports multiple VPN providers)
 ### AUTH
@@ -31,7 +31,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### MEDIA SEARCH
 * sonarr
 * radarr
-### MEDIA EDITING
+### MEDIA EDITING/TRANSCODING
 * tdarr
 ### HOME THEATRE
 * plex
@@ -43,7 +43,7 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 ### PASSWORD MANAGEMENT
 * vaultwarden (self-hosted Bitwarden)
 ### SYSTEM MONITORING
-* notifiarr
-* dockhand
+* notifiarr (sends status notifications to Discord)
+* dockhand (like Portainer, but my preference)
 
 Requires docker-compose.yaml and .env file in the same directory, container folders beneath.
