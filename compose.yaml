@@ -19,7 +19,7 @@ services:
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
       start_period: 15s
     security_opt:
@@ -62,7 +62,6 @@ services:
       # TLS
       - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
-      # - --certificatesresolvers.cloudflare.acme.tlschallenge=true # in testing, enable below to avoid rate-limiting
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
       - --entrypoints.https.http.tls.certresolver=cloudflare
       - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
@@ -77,7 +76,6 @@ services:
       - $APPDIR/traefik/rules:/rules
       - $APPDIR/traefik/logs:/logs
       - $DOCKERDIR/certs:/certs
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TZ=$TZ
       - CF_API_EMAIL=$CF_EMAIL
@@ -107,14 +105,20 @@ services:
     image: lscr.io/linuxserver/socket-proxy:latest
     container_name: socket-proxy
     restart: unless-stopped
+    healthcheck:
+      test: wget --spider http://localhost:2375/version || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     read_only: true
-    tmpfs:
-      - /run
     networks:
-      mediaserver:
+      # mediaserver:
       socket-proxy:
     ports:
-      - 2375:2375
+      - 127.0.0.1:2375:2375
+    tmpfs:
+      - /run
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -166,13 +170,13 @@ services:
     image: ghcr.io/italypaleale/traefik-forward-auth:4
     container_name: auth
     restart: unless-stopped
-    user: $PUID:$PGID
     healthcheck:
       test: ["CMD", "/traefik-forward-auth", "healthcheck"]
-      interval: 60s
-      timeout: 10s
+      interval: 30s
+      timeout: 5s
       retries: 3
       start_period: 15s
+    user: $PUID:$PGID
     security_opt:
       - no-new-privileges:true
     networks:
@@ -201,25 +205,25 @@ services:
     image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=1
-    security_opt:
-      - no-new-privileges:true
     networks:
       mediaserver:
     ports:
       - 8000:8000/tcp # gluetun control server
       - 9997:9997 # qBit WebUI
+    devices:
+      - /dev/net/tun:/dev/net/tun
     volumes:
       - $APPDIR/gluetun:/config
       - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
       - /lib/modules:/lib/modules:ro
-    devices:
-      - /dev/net/tun:/dev/net/tun
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -227,13 +231,13 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=off
+      - DNS_SERVER=on # try off in the event of instability
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
-      - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=60s
+      - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=25s
       - SERVER_COUNTRIES=Netherlands
       - UPDATER_PERIOD=24h #Frequent DNS Update was causing qbit to lose connection
       - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.18.0.0/16
@@ -302,7 +306,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -349,6 +353,12 @@ services:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api?mode=version&output=json"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -394,9 +404,18 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9997/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
     volumes:
       - $APPDIR/qbittorrent:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -425,12 +444,20 @@ services:
     image: jakub95/restart-qbittorrent:latest
     container_name: restart-qbittorrent
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "restart-qbittorrent.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     security_opt:
       - no-new-privileges:true
     networks:
       mediaserver:
       socket-proxy:
     depends_on:
+      gluetun:
+        condition: service_started
       qbittorrent:
         condition: service_started
     environment:
@@ -451,13 +478,19 @@ services:
     image: bobokun/qbit_manage
     container_name: qbitmanage
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     networks:
       mediaserver:
     depends_on:
       qbittorrent:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -492,24 +525,30 @@ services:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
     restart: unless-stopped
-    depends_on:
-      qbittorrent:
-        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7474/api/healthz/liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    user: $PUID:$PGID
     security_opt:
       - no-new-privileges:true
     networks:
       mediaserver:
-    user: $PUID:$PGID
+    depends_on:
+      qbittorrent:
+        condition: service_healthy
     volumes:
       - $APPDIR/autobrr:/config
       - $APPDIR/autobrr/logs:/logs
+    environment:
+      - GOMAXPROCS=2
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    environment:
-      - GOMAXPROCS=2
     labels:
       # HTTP Routers
       - traefik.http.routers.autobrr.entrypoints=https
@@ -635,11 +674,11 @@ services:
     container_name: plex
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:32400/web/index.html || exit 1"]
+      test: ["CMD-SHELL", "curl --connect-timeout 15 --silent --show-error --fail http://localhost:32400/identity"]
       interval: 30s
-      timeout: 5s
+      timeout: 20s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -684,6 +723,12 @@ services:
     image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8266/api/v2/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -708,7 +753,6 @@ services:
       - webUIPort=8265
       - internalNode=true
       - inContainer=true
-      - ffmpegVersion=7
       - nodeName=TdarrNode
       - auth=false
       - openBrowser=false
@@ -749,13 +793,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    depends_on:
-      plex:
-        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     networks:
       mediaserver:
+    depends_on:
+      plex:
+        condition: service_healthy
     volumes:
       - $APPDIR/tautulli:/config:rw
       - $PLEXLOGS:/plexlogs:rw
@@ -793,15 +837,15 @@ services:
   seerr:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: seerr
-    init: true
     restart: unless-stopped
-    user: $PUID:$PGID
+    init: true
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
-      start_period: 20s
-      timeout: 3s
-      interval: 15s
+      start_period: 30s
+      timeout: 5s
+      interval: 30s
       retries: 3
+    user: $PUID:$PGID
     security_opt:
       - no-new-privileges:true
     networks:
@@ -840,11 +884,17 @@ services:
     image: ghcr.io/maintainerr/maintainerr:latest
     container_name: maintainerr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6246/api/app/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     user: $PUID:$PGID
-    networks:
-      mediaserver:
     security_opt:
       - no-new-privileges:true
+    networks:
+      mediaserver:
     volumes:
       - $APPDIR/maintainerr:/opt/data
     environment:
@@ -876,7 +926,7 @@ services:
     container_name: books
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8083 || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -921,15 +971,16 @@ services:
     image: fnsys/dockhand:latest
     container_name: dockhand
     restart: unless-stopped
-    group_add:
-      - "65540"  # Use host's Docker GID
     security_opt:
       - no-new-privileges:true
-    depends_on:
-      - socket-proxy
     networks:
       mediaserver:
       socket-proxy:
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+    group_add:
+      - "65540"  # Use host's Docker GID
     volumes:
       - $APPDIR/dockhand:/app/data:rw
       - $APPDIR:/compose
@@ -966,6 +1017,12 @@ services:
     container_name: notifiarr
     hostname: notifiarr #must be set, can be anything
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5454/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     networks:
