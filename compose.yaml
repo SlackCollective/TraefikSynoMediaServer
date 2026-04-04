@@ -140,6 +140,7 @@ services:
       - INFO=1 #optional
       - LOG_LEVEL=info #optional
       - NETWORKS=1 #optional
+      - LOGS=1 #optional
       - NODES=1 #optional
       - PING=1 #optional
       - PLUGINS=1 #optional
