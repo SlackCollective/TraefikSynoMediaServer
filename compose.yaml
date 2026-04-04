@@ -469,6 +469,7 @@ services:
       - GLUETUN_CONTAINER_NAME=gluetun
       - DOCKER_HOST=tcp://socket-proxy:2375
     labels:
+      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
