@@ -301,6 +301,8 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/ping || exit 1"]
@@ -467,7 +469,6 @@ services:
       - GLUETUN_CONTAINER_NAME=gluetun
       - DOCKER_HOST=tcp://socket-proxy:2375
     labels:
-      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -573,6 +574,8 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:7878/ping || exit 1"]
@@ -624,6 +627,8 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
+    tmpfs:
+      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8989/ping || exit 1"]
@@ -726,6 +731,7 @@ services:
   tdarr:
     image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
+    cpu_shares: 512
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8266/api/v2/status"]
