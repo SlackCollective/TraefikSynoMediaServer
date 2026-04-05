@@ -147,7 +147,7 @@ services:
       - POST=1 #optional
       - SECRETS=0 #optional
       - SERVICES=1 #optional
-      - SESSION=0 #optional
+      - SESSION=1 #optional
       - SWARM=0 #optional
       - SYSTEM=1 #optional
       - TASKS=1 #optional
@@ -456,7 +456,6 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      mediaserver:
       socket-proxy:
     depends_on:
       gluetun:
@@ -491,8 +490,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 9996:9996
+    # ports:
+      # - 9996:9996
     depends_on:
       qbittorrent:
         condition: service_healthy
@@ -709,6 +708,7 @@ services:
       - TZ=$TZ
       - VERSION=docker
       - UMASK=002
+      - ADVERTISE_IP=https://plex.$DOMAINNAME,http://192.168.1.156:32400
     logging:
       driver: "json-file"
       options:
