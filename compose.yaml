@@ -254,8 +254,6 @@ services:
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
@@ -314,8 +312,6 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 9696:9696
     volumes:
       - $APPDIR/prowlarr:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -339,7 +335,7 @@ services:
       - traefik.http.routers.prowlarr-bypass.priority=100
       # Middlewares
       - traefik.http.routers.prowlarr.middlewares=chain-auth@file
-      - traefik.http.routers.prowlarr-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.prowlarr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.prowlarr.service=prowlarr
       - traefik.http.routers.prowlarr-bypass.service=prowlarr
@@ -390,8 +386,8 @@ services:
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=chain-auth@file
-      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.sabnzbd.middlewares=chain-downloadclients@file
+      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -490,15 +486,13 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    # ports:
-      # - 9996:9996
     depends_on:
       qbittorrent:
         condition: service_healthy
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
-      - $DATADIR/torrents:/data/torrents:rw # same as qbittorrent download dir
+      - $DATADIR/torrents:/data/torrents:rw # match qbittorrent download dir
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -515,7 +509,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=chain-auth@file
+      - traefik.http.routers.qbitmanage.middlewares=chain-downloadclients@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=9996
@@ -612,7 +606,7 @@ services:
       - traefik.http.routers.radarr-bypass.priority=100
       # Middlewares
       - traefik.http.routers.radarr.middlewares=chain-auth@file
-      - traefik.http.routers.radarr-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.radarr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.routers.radarr-bypass.service=radarr
@@ -665,7 +659,7 @@ services:
       - traefik.http.routers.sonarr-bypass.priority=100
       # Middlewares
       - traefik.http.routers.sonarr.middlewares=chain-auth@file
-      - traefik.http.routers.sonarr-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.sonarr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.routers.sonarr-bypass.service=sonarr
@@ -708,7 +702,7 @@ services:
       - TZ=$TZ
       - VERSION=docker
       - UMASK=002
-      - ADVERTISE_IP=https://plex.$DOMAINNAME,http://192.168.1.156:32400
+      - ADVERTISE_IP=http://192.168.1.156:32400,https://plex.$DOMAINNAME:443
     logging:
       driver: "json-file"
       options:
@@ -718,6 +712,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.plex.entrypoints=https
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.plex.middlewares=chain-plex@file
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
@@ -832,8 +828,8 @@ services:
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-auth@file
-      - traefik.http.routers.tautulli-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.tautulli.middlewares=chain-plex@file
+      - traefik.http.routers.tautulli-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
       - traefik.http.routers.tautulli-bypass.service=tautulli
@@ -1090,6 +1086,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.vaultwarden.entrypoints=https
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.vaultwarden.middlewares=chain-safe@file
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80

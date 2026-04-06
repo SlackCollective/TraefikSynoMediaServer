@@ -1,18 +1,43 @@
-  GNU nano 8.7                                                                 middlewares-chains.yml                                                                            
 http:
   middlewares:
+    # Chain: Rate limiting + Security headers
     chain-auth:
       chain:
         middlewares:
-          - "rate-limit"
-          - "secure-headers"
+          - "basic-ratelimit"
+          - "arr-headers"
           - "auth"
           - "https-redirectscheme"
           - "compress"
-    chain-noauth:
+
+    # Download clients
+    chain-downloadclients:
       chain:
         middlewares:
-          - "rate-limit"
-          - "secure-headers"
+          - "basic-ratelimit"
+          - "downloadclient-headers"
+          - "auth"
+
+    # API chain (different rate limits, same security)
+    chain-api:
+      chain:
+        middlewares:
+          - "api-ratelimit"
+          - "api-headers"
+          - "https-redirectscheme"
+
+    # Chain for Plex and Tautulli
+    chain-plex:
+      chain:
+        middlewares:
+          - "basic-ratelimit"
+          - "plex-headers"
+          
+    # Failsafe (normal rate limits, permissive security, no oAuth)
+    chain-safe:
+      chain:
+        middlewares:
+          - "basic-ratelimit"
+          - "permissive-headers"
           - "https-redirectscheme"
           - "compress"

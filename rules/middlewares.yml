@@ -1,11 +1,19 @@
----
 http:
   middlewares:
 
-    rate-limit:
+    # Basic rate limiting
+    basic-ratelimit:
       rateLimit:
-        average: 100
-        burst: 50
+        average: 100          # 100 requests per period
+        burst: 50             # Allow burst of 50 requests
+        period: 1m            # Per minute (default)
+    
+    # Stricter rate limiting for API endpoints
+    api-ratelimit:
+      rateLimit:
+        average: 50
+        burst: 25
+        period: 1m
 
     https-redirectscheme:
       redirectScheme:
@@ -15,27 +23,133 @@ http:
     compress:
       compress: {}
 
-    secure-headers:
+    # Curated headers for Plex
+    plex-headers:
       headers:
-        accessControlAllowMethods:
-          - GET
-          - OPTIONS
-          - PUT
-        accessControlMaxAge: 100
-        stsSeconds: 63072000
+        stsSeconds: 31536000
         stsIncludeSubdomains: true
         stsPreload: true
         forceSTSHeader: true
-          #customFrameOptionsValue: "allow-from https:{{env "DOMAINNAME_CLOUD_SERVER"}}"
         contentTypeNosniff: true
         browserXssFilter: true
-      # sslForceHost: true # add sslHost to all of the services
-        # sslHost: "{{env "DOMAINNAME_CLOUD_SERVER"}}"
-        referrerPolicy: "same-origin"
-        permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), vr=()"
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+        
+        # Plex-tuned CSP - more permissive than static sites but still secure
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+                   https://*.plex.tv https://plex.tv 
+                   https://*.plex.direct https://*.plex.services
+                   https://*.cloudfront.net https://*.amazonaws.com
+                   https://www.gstatic.com https://www.google.com
+                   https://*.googleapis.com
+                   https://*.stripe.com https://stripe.com
+                   https://*.brunswickmedia.co.za
+                   blob:;
+          style-src 'self' 'unsafe-inline' 
+                   https://*.plex.tv https://plex.tv
+                   https://fonts.googleapis.com
+                   https://*.googleapis.com;
+          img-src 'self' data: blob: https: http:;
+          font-src 'self' data: 
+                   https://fonts.gstatic.com 
+                   https://*.plex.tv;
+          connect-src 'self' 
+                     https://*.plex.tv https://plex.tv 
+                     https://*.plex.direct https://*.plex.services
+                     https://pubsub.plex.tv wss://pubsub.plex.tv
+                     https://*.cloudfront.net https://*.amazonaws.com
+                     https://metadata.provider.plex.tv
+                     https://analytics.plex.tv
+                     https://*.stripe.com https://api.stripe.com
+                     https://*.google-analytics.com
+                     https://*.brunswickmedia.co.za
+                     wss: ws:;
+          media-src 'self' blob: data: 
+                    https://*.plex.tv https://*.plex.direct
+                    http://*.plex.direct;
+                    https://*.brunswickmedia.co.za
+          worker-src 'self' blob:;
+          frame-src 'self' 
+                   https://*.plex.tv https://plex.tv
+                   https://*.youtube.com https://youtube.com
+                   https://*.vimeo.com
+                   https://*.stripe.com
+                   https://*.brunswickmedia.co.za
+                   https://brunswickmedia.co.za
+                   https://*.google.com;
+          frame-ancestors 'self' https://app.plex.tv https://*.brunswickmedia.co.za;
+          base-uri 'self';
+          form-action 'self' https://*.plex.tv https://plex.tv https://*.brunswickmedia.co.za;
+          upgrade-insecure-requests;
+        
+        permissionsPolicy: |
+          camera=(), 
+          microphone=(), 
+          geolocation=(), 
+          payment=(self https://*.stripe.com), 
+          usb=(),
+          vr=(),
+          autoplay=(self)
+        
         customResponseHeaders:
-          X-Robots-Tag: "none,noarchive,nosnippet,notranslate,noimageindex,"
-          server: ""
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "SAMEORIGIN"
+          X-XSS-Protection: "1; mode=block"
+          X-Robots-Tag: "noindex,nofollow"
+          Server: ""
+
+    # Permissive headers for arr container
+    arr-headers:
+      headers:
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: blob: https: http:;
+          connect-src 'self' *;
+          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+
+    # Download clients - more restrictive
+    downloadclient-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "same-origin"
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: blob:;
+          connect-src 'self' wss: ws:;
+          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+          base-uri 'self';
+          form-action 'self';
+
+    # Permissive headers for legacy apps (use sparingly)
+    permissive-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentSecurityPolicy: "default-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob:;"
+        browserXssFilter: true
+        contentTypeNosniff: true
+        referrerPolicy: "same-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+
+    # API-specific headers (minimal, functional)
+    api-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        referrerPolicy: "no-referrer"
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          Cache-Control: "no-store, max-age=0"
 
     auth:
       forwardAuth:
