@@ -48,19 +48,15 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
+      - --entrypoints.http.http.redirections.entrypoint.to=https 
       # For headers
       - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
+      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       # Logging
-      - --entryPoints.http.observability.accessLogs=true
-      - --accesslog.filepath=/logs/access.log
-      - --accesslog.format=json
-      - --accesslog.bufferingsize=200
-      - --accesslog.filters.statuscodes=400-599 # only log http errors in logs; alternatively set 200-599 to include successful http requests
-      - --accesslog.fields.headers.defaultmode=drop # drop all headers
-      - --accesslog.fields.headers.names.user-agent=keep # keep user-agent header
+      - --entryPoints.http.observability.accessLogs=false
+      - --entryPoints.https.observability.accessLogs=false
       - --metrics.prometheus=false
       # TLS
-      - --serversTransport.insecureSkipVerify=false # set insecureSkipVerify to true to allow self-signed certificates
       - --entrypoints.https.http.tls=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
       - --entrypoints.https.http.tls.certresolver=cloudflare
@@ -113,7 +109,6 @@ services:
       start_period: 15s
     read_only: true
     networks:
-      # mediaserver:
       socket-proxy:
     ports:
       - 127.0.0.1:2375:2375
@@ -135,7 +130,7 @@ services:
       - DISABLE_IPV6=1 #optional
       - DISTRIBUTION=0 #optional
       - EVENTS=1 #optional
-      - EXEC=1 #optional
+      - EXEC=0 #optional
       - IMAGES=1 #optional
       - INFO=1 #optional
       - LOG_LEVEL=info #optional
@@ -232,7 +227,8 @@ services:
       - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=off # try off in the event of instability
+      - DNS_SERVER=off # if toggled, the next line must be commented out
+      # - DNS_SERVER=https://1.1.1.1/dns-query
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
@@ -254,8 +250,16 @@ services:
       # HTTP Routers
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
+      # HTTP Routers Auth Bypass (for NZB360 — qBit uses its own session auth on /api/v2)
+      - traefik.http.routers.qbittorrent-bypass.entrypoints=https
+      - traefik.http.routers.qbittorrent-bypass.rule=Host(`qbittorrent.$DOMAINNAME`) && PathPrefix(`/api/v2`)
+      - traefik.http.routers.qbittorrent-bypass.priority=100
+      # Middlewares
+      - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
+      - traefik.http.routers.qbittorrent-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
+      - traefik.http.routers.qbittorrent-bypass.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
 
   ############################# HOMEPAGE
@@ -264,6 +268,12 @@ services:
     image: ghcr.io/organizr/organizr:latest
     container_name: organizr
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     networks:
@@ -362,8 +372,6 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 9998:8080
     volumes:
       - $APPDIR/sabnzbd:/config
       - $DATADIR/usenet:/data/usenet:rw
@@ -386,7 +394,7 @@ services:
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.sabnzbd.middlewares=chain-downloadclients@file
+      - traefik.http.routers.sabnzbd.middlewares=chain-auth@file
       - traefik.http.routers.sabnzbd-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
@@ -455,7 +463,7 @@ services:
       socket-proxy:
     depends_on:
       gluetun:
-        condition: service_started
+        condition: service_healthy
       qbittorrent:
         condition: service_started
     environment:
@@ -509,7 +517,7 @@ services:
       - traefik.http.routers.qbitmanage.entrypoints=https
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.qbitmanage.middlewares=chain-downloadclients@file
+      - traefik.http.routers.qbitmanage.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.qbitmanage.service=qbitmanage
       - traefik.http.services.qbitmanage.loadbalancer.server.port=9996
@@ -828,7 +836,7 @@ services:
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-plex@file
+      - traefik.http.routers.tautulli.middlewares=chain-tautulli@file
       - traefik.http.routers.tautulli-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
@@ -875,10 +883,16 @@ services:
       # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=https
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
+      # HTTP Routers Auth Bypass (for NZB360)
+      - traefik.http.routers.overseerr-bypass.entrypoints=https
+      - traefik.http.routers.overseerr-bypass.rule=Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))
+      - traefik.http.routers.overseerr-bypass.priority=100
       # Middlewares
       - traefik.http.routers.overseerr.middlewares=chain-auth@file
+      - traefik.http.routers.overseerr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
+      - traefik.http.routers.overseerr-bypass.service=overseerr
       - traefik.http.services.overseerr.loadbalancer.server.port=5055
       ## Updating and notifications
       - org.hotio.pullio.notify=true
@@ -1083,13 +1097,14 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      # HTTP Routers
+      # HTTP Routers (web vault — stays behind OAuth + frame-ancestors: none)
       - traefik.http.routers.vaultwarden.entrypoints=https
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.vaultwarden.middlewares=chain-safe@file
+      - traefik.http.routers.vaultwarden.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
+      - traefik.http.routers.vaultwarden-api.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80
       ## Updating and notifications
       - org.hotio.pullio.notify=true

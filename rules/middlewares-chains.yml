@@ -5,18 +5,26 @@ http:
       chain:
         middlewares:
           - "basic-ratelimit"
-          - "arr-headers"
+          # - "generic-auth-headers"
           - "auth"
-          - "https-redirectscheme"
           - "compress"
 
-    # Download clients
-    chain-downloadclients:
+    # Vaultwarden
+    chain-vaultwarden:
       chain:
         middlewares:
           - "basic-ratelimit"
-          - "downloadclient-headers"
+          - "generic-auth-headers"
+          - "vaultwarden-override" # frame-ancestors 'none' wins, overwriting generic set
           - "auth"
+          - "compress"
+
+    # Chain for Vaultwarden API/sync endpoints — no OAuth; Bitwarden clients authenticate themselves
+    chain-vaultwarden-api:
+      chain:
+        middlewares:
+          - "api-ratelimit"
+          - "vaultwarden-api-headers"
 
     # API chain (different rate limits, same security)
     chain-api:
@@ -24,20 +32,20 @@ http:
         middlewares:
           - "api-ratelimit"
           - "api-headers"
-          - "https-redirectscheme"
 
-    # Chain for Plex and Tautulli
+    # Chain for Plex
     chain-plex:
       chain:
         middlewares:
           - "basic-ratelimit"
           - "plex-headers"
-          
-    # Failsafe (normal rate limits, permissive security, no oAuth)
-    chain-safe:
+          - "compress"
+
+    # Chain for Tautulli — Plex-aware headers, still behind auth
+    chain-tautulli:
       chain:
         middlewares:
           - "basic-ratelimit"
-          - "permissive-headers"
-          - "https-redirectscheme"
+          - "tautulli-headers"
+          - "auth"
           - "compress"

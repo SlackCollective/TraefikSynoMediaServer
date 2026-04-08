@@ -15,13 +15,63 @@ http:
         burst: 25
         period: 1m
 
-    https-redirectscheme:
-      redirectScheme:
-        scheme: https
-        permanent: true
-
     compress:
       compress: {}
+
+    auth:
+      forwardAuth:
+        address: "http://auth:4181/portals/main"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "X-Forwarded-User"
+          - "X-Forwarded-Displayname"
+          - "X-Authenticated-User"
+
+    generic-auth-headers:
+      headers:
+        # HSTS - force HTTPS even after Traefik redirect
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true           # Required when behind a reverse proxy
+
+        # Basic security
+        contentTypeNosniff: true       # Sets X-Content-Type-Options: nosniff
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"   # Sets X-Frame-Options
+
+        # CSP - permits Organizr's iframe embedding of your own subdomains,
+        # inline scripts/styles (required by Organizr/PHP apps), and nothing else
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: blob: https:;
+          font-src 'self' data:;
+          connect-src 'self' https://*.brunswickmedia.co.za wss:;
+          media-src 'self' blob:;
+          worker-src 'self' blob:;
+          frame-src 'self' https://*.brunswickmedia.co.za https://brunswickmedia.co.za;
+          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+          base-uri 'self';
+          form-action 'self' https://*.brunswickmedia.co.za;
+          upgrade-insecure-requests;
+
+        permissionsPolicy: |
+          camera=(),
+          microphone=(),
+          geolocation=(),
+          payment=(),
+          usb=(),
+          autoplay=(self)
+
+        # customResponseHeaders only for things not covered above.
+        # X-Content-Type-Options, X-Frame-Options are already set by the
+        # Traefik directives above — do NOT repeat them here.
+        customResponseHeaders:
+          X-XSS-Protection: "0"        # Disabled — deprecated and harmful in some browsers
+          X-Robots-Tag: "noindex, nofollow"
+          Server: ""                   # Suppress server version disclosure
 
     # Curated headers for Plex
     plex-headers:
@@ -31,7 +81,6 @@ http:
         stsPreload: true
         forceSTSHeader: true
         contentTypeNosniff: true
-        browserXssFilter: true
         referrerPolicy: "strict-origin-when-cross-origin"
         customFrameOptionsValue: "SAMEORIGIN"
         
@@ -67,9 +116,9 @@ http:
                      https://*.brunswickmedia.co.za
                      wss: ws:;
           media-src 'self' blob: data: 
-                    https://*.plex.tv https://*.plex.direct
-                    http://*.plex.direct;
-                    https://*.brunswickmedia.co.za
+                    https://*.plex.tv
+                    http://*.plex.direct
+                    https://*.brunswickmedia.co.za;
           worker-src 'self' blob:;
           frame-src 'self' 
                    https://*.plex.tv https://plex.tv
@@ -94,51 +143,29 @@ http:
           autoplay=(self)
         
         customResponseHeaders:
-          X-Content-Type-Options: "nosniff"
-          X-Frame-Options: "SAMEORIGIN"
-          X-XSS-Protection: "1; mode=block"
-          X-Robots-Tag: "noindex,nofollow"
+          X-XSS-Protection: "0"        # Disabled — deprecated and harmful in some browsers
+          X-Robots-Tag: "noindex, nofollow"
           Server: ""
 
-    # Permissive headers for arr container
-    arr-headers:
+    # Vaultwarden web vault headers — full standalone CSP, not a patch over generic-auth-headers.
+    # generic-auth-headers sets the CSP first; this middleware runs after it in chain-vaultwarden
+    # and replaces the entire Content-Security-Policy value, so it must be self-contained.
+    vaultwarden-override:
       headers:
+        customFrameOptionsValue: "DENY"
         contentSecurityPolicy: |
           default-src 'self';
-          script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
+          script-src 'self';
           style-src 'self' 'unsafe-inline';
-          img-src 'self' data: blob: https: http:;
-          connect-src 'self' *;
-          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
-
-    # Download clients - more restrictive
-    downloadclient-headers:
-      headers:
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        contentTypeNosniff: true
-        browserXssFilter: true
-        referrerPolicy: "same-origin"
-        contentSecurityPolicy: |
-          default-src 'self';
-          script-src 'self' 'unsafe-inline' 'unsafe-eval';
-          style-src 'self' 'unsafe-inline';
-          img-src 'self' data: blob:;
-          connect-src 'self' wss: ws:;
-          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+          img-src 'self' data: https:;
+          font-src 'self' data:;
+          connect-src 'self';
+          frame-src 'none';
+          frame-ancestors 'none';
           base-uri 'self';
           form-action 'self';
+          upgrade-insecure-requests;
 
-    # Permissive headers for legacy apps (use sparingly)
-    permissive-headers:
-      headers:
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        contentSecurityPolicy: "default-src 'self' 'unsafe-inline' 'unsafe-eval' * data: blob:;"
-        browserXssFilter: true
-        contentTypeNosniff: true
-        referrerPolicy: "same-origin"
-        customFrameOptionsValue: "SAMEORIGIN"
 
     # API-specific headers (minimal, functional)
     api-headers:
@@ -148,14 +175,65 @@ http:
         contentTypeNosniff: true
         referrerPolicy: "no-referrer"
         customResponseHeaders:
-          X-Content-Type-Options: "nosniff"
           Cache-Control: "no-store, max-age=0"
+          Server: ""                   # Suppress server version disclosure
 
-    auth:
-      forwardAuth:
-        address: "http://auth:4181/portals/main"
-        trustForwardHeader: true
-        authResponseHeaders:
-          - "X-Forwarded-User"
-          - "X-Forwarded-Displayname"
-          - "X-Authenticated-User"
+    # Tautulli-specific headers — extends the generic set with Plex-domain sources
+    # so the Tautulli web UI can reach Plex CDN for artwork and API responses
+    tautulli-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: blob: https: http:;
+          font-src 'self' data:;
+          connect-src 'self'
+                    https://*.brunswickmedia.co.za wss:
+                    https://*.plex.tv https://plex.tv
+                    https://*.plex.direct https://*.plex.services
+                    https://pubsub.plex.tv wss://pubsub.plex.tv
+                    https://analytics.plex.tv
+                    https://metadata.provider.plex.tv;
+          media-src 'self' blob:;
+          worker-src 'self' blob:;
+          frame-src 'self' https://*.brunswickmedia.co.za https://brunswickmedia.co.za;
+          frame-ancestors 'self' https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+          base-uri 'self';
+          form-action 'self' https://*.brunswickmedia.co.za;
+          upgrade-insecure-requests;
+
+        permissionsPolicy: |
+          camera=(),
+          microphone=(),
+          geolocation=(),
+          payment=(),
+          usb=(),
+          autoplay=(self)
+
+        customResponseHeaders:
+          X-XSS-Protection: "0"
+          X-Robots-Tag: "noindex, nofollow"
+          Server: ""
+
+    # Vaultwarden API headers — used on sync/client paths (/api, /identity, /notifications…)
+    # No frame restrictions; Bitwarden clients handle their own auth on these routes
+    vaultwarden-api-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        referrerPolicy: "no-referrer"
+        customResponseHeaders:
+          Cache-Control: "no-store, max-age=0"
+          Server: ""
