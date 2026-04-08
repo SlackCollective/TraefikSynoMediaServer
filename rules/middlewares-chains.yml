@@ -1,51 +1,24 @@
 http:
   middlewares:
-    # Chain: Rate limiting + Security headers
+    # Chain: Rate limiting, auth, default Traefik headers
     chain-auth:
       chain:
         middlewares:
           - "basic-ratelimit"
-          # - "generic-auth-headers"
           - "auth"
           - "compress"
-
-    # Vaultwarden
-    chain-vaultwarden:
-      chain:
-        middlewares:
-          - "basic-ratelimit"
-          - "generic-auth-headers"
-          - "vaultwarden-override" # frame-ancestors 'none' wins, overwriting generic set
-          - "auth"
-          - "compress"
-
-    # Chain for Vaultwarden API/sync endpoints — no OAuth; Bitwarden clients authenticate themselves
-    chain-vaultwarden-api:
-      chain:
-        middlewares:
-          - "api-ratelimit"
-          - "vaultwarden-api-headers"
 
     # API chain (different rate limits, same security)
     chain-api:
       chain:
         middlewares:
           - "api-ratelimit"
-          - "api-headers"
-
-    # Chain for Plex
-    chain-plex:
-      chain:
-        middlewares:
-          - "basic-ratelimit"
-          - "plex-headers"
           - "compress"
 
-    # Chain for Tautulli — Plex-aware headers, still behind auth
-    chain-tautulli:
+    # Chain for Plex & Tautulli
+    chain-media:
       chain:
         middlewares:
           - "basic-ratelimit"
-          - "tautulli-headers"
-          - "auth"
+          # - "media-headers"
           - "compress"
