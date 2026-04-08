@@ -710,7 +710,6 @@ services:
       - TZ=$TZ
       - VERSION=docker
       - UMASK=002
-      - ADVERTISE_IP=http://192.168.1.156:32400,https://plex.$DOMAINNAME:443
     logging:
       driver: "json-file"
       options:
