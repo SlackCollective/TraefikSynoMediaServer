@@ -720,7 +720,7 @@ services:
       - traefik.http.routers.plex.entrypoints=https
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.plex.middlewares=chain-plex@file
+      - traefik.http.routers.plex.middlewares=chain-media@file
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
@@ -835,7 +835,7 @@ services:
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-tautulli@file
+      - traefik.http.routers.tautulli.middlewares=chain-media@file
       - traefik.http.routers.tautulli-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
@@ -887,7 +887,7 @@ services:
       - traefik.http.routers.overseerr-bypass.rule=Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))
       - traefik.http.routers.overseerr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.overseerr.middlewares=chain-auth@file
+      - traefik.http.routers.overseerr.middlewares=chain-media@file
       - traefik.http.routers.overseerr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
