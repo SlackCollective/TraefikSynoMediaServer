@@ -22,10 +22,61 @@ http:
       forwardAuth:
         address: "http://auth:4181/portals/main"
         trustForwardHeader: true
+        maxResponseBodySize: 12288
         authResponseHeaders:
           - "X-Forwarded-User"
           - "X-Forwarded-Displayname"
           - "X-Authenticated-User"
+
+    # Generic headers
+    generic-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        
+        contentSecurityPolicy: >
+          frame-src 'self' 
+                   https://*.plex.tv https://plex.tv
+                   https://*.brunswickmedia.co.za
+                   https://brunswickmedia.co.za
+                   https://*.google.com;
+          img-src 'self' data: blob: https: http:;
+          frame-ancestors 'self' https://app.plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
+
+          default-src 'self';
+          script-src 'self';
+          style-src 'self' 'unsafe-inline';
+          font-src 'self' data:;
+          connect-src 'self';
+          base-uri 'self';
+          form-action 'self';
+          upgrade-insecure-requests;
+
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+          - PUT
+        accessControlAllowHeaders: "*"
+        accessControlAllowOriginList: "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+
+        permissionsPolicy: >
+            camera=(),
+            microphone=(),
+            geolocation=(),
+            payment=(),
+            usb=(),
+            autoplay=()
+
+        customResponseHeaders:
+            X-XSS-Protection: "0"
+            X-Robots-Tag: "noindex, nofollow"
+            Server: ""
 
     # Curated headers for Plex
     media-headers:
@@ -34,9 +85,6 @@ http:
         stsIncludeSubdomains: true
         stsPreload: true
         forceSTSHeader: true
-        contentTypeNosniff: true
-        referrerPolicy: "strict-origin-when-cross-origin"
-        customFrameOptionsValue: "SAMEORIGIN"
         
         # Plex-tuned CSP - more permissive than static sites but still secure
         contentSecurityPolicy: |
@@ -62,11 +110,6 @@ http:
                      https://*.plex.tv https://plex.tv 
                      https://*.plex.direct https://*.plex.services
                      https://pubsub.plex.tv wss://pubsub.plex.tv
-                     https://*.cloudfront.net https://*.amazonaws.com
-                     https://metadata.provider.plex.tv
-                     https://analytics.plex.tv
-                     https://*.stripe.com https://api.stripe.com
-                     https://*.google-analytics.com
                      https://*.brunswickmedia.co.za
                      wss: ws:;
           media-src 'self' blob: data: 
@@ -76,17 +119,24 @@ http:
           worker-src 'self' blob:;
           frame-src 'self' 
                    https://*.plex.tv https://plex.tv
-                   https://*.youtube.com https://youtube.com
-                   https://*.vimeo.com
-                   https://*.stripe.com
                    https://*.brunswickmedia.co.za
                    https://brunswickmedia.co.za
-                   https://*.google.com;
-          frame-ancestors 'self' https://app.plex.tv https://*.brunswickmedia.co.za;
+          frame-ancestors 'self' https://app.plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
           base-uri 'self';
-          form-action 'self' https://*.plex.tv https://plex.tv https://*.brunswickmedia.co.za;
+          form-action 'self' https://*.plex.tv https://plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
           upgrade-insecure-requests;
-        
+
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+          - PUT
+        accessControlAllowHeaders: "*"
+        accessControlAllowOriginList: "*"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+
         permissionsPolicy: |
           camera=(), 
           microphone=(), 
