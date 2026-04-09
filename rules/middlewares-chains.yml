@@ -1,14 +1,23 @@
 http:
   middlewares:
-    # Chain: Rate limiting, auth, default Traefik headers
+    # Chain: Rate limiting, auth, generic Traefik headers with CORS
     chain-auth:
       chain:
         middlewares:
+          - "generic-headers"
           - "basic-ratelimit"
           - "auth"
           - "compress"
 
-    # API chain (different rate limits, same security)
+    # Chain: Rate limiting, generic Traefik headers with CORS
+    chain-noauth:
+      chain:
+        middlewares:
+          - "generic-headers"
+          - "basic-ratelimit"
+          - "compress"
+
+    # API chain (different rate limits, no browser headers)
     chain-api:
       chain:
         middlewares:
@@ -19,6 +28,6 @@ http:
     chain-media:
       chain:
         middlewares:
+          - "media-headers"
           - "basic-ratelimit"
-          # - "media-headers"
           - "compress"
