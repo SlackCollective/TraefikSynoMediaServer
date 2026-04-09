@@ -53,8 +53,12 @@ services:
       - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       # Logging
-      - --entryPoints.http.observability.accessLogs=false
-      - --entryPoints.https.observability.accessLogs=false
+      - --entryPoints.http.observability.accessLogs=true
+      - --entryPoints.https.observability.accessLogs=true
+      - --accesslog.bufferingsize=50
+      - --accesslog.filters.statuscodes=200,300-302
+      - --accesslog.filters.retryattempts
+      - --accesslog.filters.minduration=10ms
       - --metrics.prometheus=false
       # TLS
       - --entrypoints.https.http.tls=true
@@ -70,7 +74,6 @@ services:
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
-      - $APPDIR/traefik/logs:/logs
       - $DOCKERDIR/certs:/certs
     environment:
       - TZ=$TZ
@@ -188,6 +191,8 @@ services:
       # HTTP Routers
       - traefik.http.routers.auth.entrypoints=https
       - traefik.http.routers.auth.rule=Host(`auth.$DOMAINNAME`)
+      # Middlewares
+      - traefik.http.routers.auth.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.services.auth.loadbalancer.server.port=4181
       ## Updating and notifications
@@ -882,7 +887,7 @@ services:
       # HTTP Routers
       - traefik.http.routers.overseerr.entrypoints=https
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
-      # HTTP Routers Auth Bypass (for NZB360)
+      # HTTP Routers Auth Bypass
       - traefik.http.routers.overseerr-bypass.entrypoints=https
       - traefik.http.routers.overseerr-bypass.rule=Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))
       - traefik.http.routers.overseerr-bypass.priority=100
