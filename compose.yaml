@@ -15,7 +15,7 @@ services:
   traefik:
     image: traefik:v3
     container_name: traefik
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
@@ -55,7 +55,7 @@ services:
       - --providers.file.watch=true # Only works on top level files in the rules folder
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
-      - --entrypoints.http.http.redirections.entrypoint.to=https 
+      - --entrypoints.http.http.redirections.entrypoint.to=https
       # For headers
       - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
@@ -79,6 +79,9 @@ services:
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
+      # Plugins
+      # - --experimental.plugins.crowdsec-plugin.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      # - --experimental.plugins.crowdsec-plugin.version=v1.5.1
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
@@ -112,7 +115,7 @@ services:
   socket-proxy:
     image: lscr.io/linuxserver/socket-proxy:latest
     container_name: socket-proxy
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 64M
@@ -181,7 +184,7 @@ services:
   auth:
     image: ghcr.io/italypaleale/traefik-forward-auth:4
     container_name: auth
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
@@ -197,6 +200,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 4181:4181
     volumes:
       - $APPDIR/auth:/etc/traefik-forward-auth
     logging:
@@ -222,7 +227,7 @@ services:
   gluetun:
     image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
@@ -270,6 +275,7 @@ services:
       - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
       - FIREWALL_VPN_INPUT_PORTS=51007
       - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
+      # - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE='{"auth":"none"}'
       - LOG_LEVEL=info
     logging:
       driver: "json-file"
@@ -286,7 +292,7 @@ services:
       - traefik.http.routers.qbittorrent-bypass.priority=100
       # Middlewares
       - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
-      - traefik.http.routers.qbittorrent-bypass.middlewares=chain-api@file
+      - traefik.http.routers.qbittorrent-bypass.middlewares=chain-downloaders-api@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
       - traefik.http.routers.qbittorrent-bypass.service=qbittorrent
@@ -302,7 +308,7 @@ services:
   organizr:
     image: ghcr.io/organizr/organizr:latest
     container_name: organizr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
@@ -348,12 +354,10 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
-    tmpfs:
-      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/ping || exit 1"]
@@ -365,10 +369,12 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 9696:9696
     volumes:
       - $APPDIR/prowlarr:/config:rw
-      # - $DATADIR/torrents:/data/torrents:rw
-      # - $DATADIR/usenet:/data/usenet:rw
+      - $DATADIR/torrents:/data/torrents:rw
+      - $DATADIR/usenet:/data/usenet:rw
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -404,7 +410,7 @@ services:
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 1024M
@@ -442,7 +448,7 @@ services:
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=chain-auth@file
-      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-api@file
+      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-downloaders-api@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -457,7 +463,7 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 512M
@@ -501,7 +507,7 @@ services:
   qbit_manage:
     image: bobokun/qbit_manage
     container_name: qbitmanage
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
@@ -553,7 +559,7 @@ services:
   autobrr:
     image: ghcr.io/autobrr/autobrr:latest
     container_name: autobrr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
@@ -602,12 +608,10 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 512M
-    tmpfs:
-      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:7878/ping || exit 1"]
@@ -659,12 +663,10 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 512M
-    tmpfs:
-      - /tmp
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8989/ping || exit 1"]
@@ -717,7 +719,7 @@ services:
   plex:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 1536M
@@ -738,11 +740,10 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - "937"  # videodriver group on Synology
-    tmpfs:        
-      - /temp:size=512M    # ramdisk transcode
     volumes:
       - $APPDIR/plex:/config:rw
-      - $DATADIR/media:/data/media:ro
+      - $DATADIR/media:/data/media:rw
+      - $RAMDISK=temp
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -774,10 +775,10 @@ services:
   tdarr:
     image: ghcr.io/haveagitgat/tdarr:latest
     container_name: tdarr
-    deploy:  
+    deploy:
       resources:
         limits:
-          memory: 2048M
+          memory: 1536M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8266/api/v2/status"]
@@ -789,6 +790,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 8265:8265
     devices:
       - /dev/dri:/dev/dri
     group_add:
@@ -797,7 +800,9 @@ services:
       - $APPDIR/tdarr/server:/app/server
       - $APPDIR/tdarr/configs:/app/configs
       - $APPDIR/tdarr/logs:/app/logs
-      - $DATADIR/media:/data/media:rw
+      - $APPDIR/tdarr/temp:/temp
+      - $DATADIR/media/tv:/tv
+      - $DATADIR/media/movies:/movies
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -817,6 +822,7 @@ services:
       - ffmpegVersion=6
       - VAAPI_DEVICE=/dev/dri/renderD128
       - TDARR_MAX_SIMULTANEOUS_ENCODES=1
+      - logLevel=error
     logging:
       driver: "json-file"
       options:
@@ -842,7 +848,7 @@ services:
   tautulli:
     image: lscr.io/linuxserver/tautulli:latest
     container_name: tautulli
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
@@ -862,6 +868,7 @@ services:
         condition: service_healthy
     volumes:
       - $APPDIR/tautulli:/config:rw
+      - $DATADIR/media:/data/media:ro
       - $PLEXLOGS:/plexlogs:ro
     environment:
       - PUID=$PUID
@@ -881,7 +888,7 @@ services:
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-media@file # no oAuth - uses Plex user auth
+      - traefik.http.routers.tautulli.middlewares=chain-media@file
       - traefik.http.routers.tautulli-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
@@ -897,7 +904,7 @@ services:
   seerr:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: seerr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 512M
@@ -919,6 +926,7 @@ services:
         condition: service_healthy
     volumes:
       - $APPDIR/seerr:/app/config
+      - $DATADIR/media:/data/media:ro
     environment:
       - LOG_LEVEL=error
       - TZ=$TZ
@@ -937,7 +945,7 @@ services:
       - traefik.http.routers.overseerr-bypass.rule=Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))
       - traefik.http.routers.overseerr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.overseerr.middlewares=chain-media@file # no oAuth - uses Plex user auth
+      - traefik.http.routers.overseerr.middlewares=chain-media@file
       - traefik.http.routers.overseerr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
@@ -953,7 +961,7 @@ services:
   maintainerr:
     image: ghcr.io/maintainerr/maintainerr:latest
     container_name: maintainerr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
@@ -983,7 +991,7 @@ services:
       - traefik.http.routers.maintainerr.entrypoints=https
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=chain-auth@file
+      - traefik.http.routers.maintainerr.middlewares=chain-media@file
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
@@ -998,7 +1006,7 @@ services:
   calibreweb:
     image: crocodilestick/calibre-web-automated:latest
     container_name: books
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 384M
@@ -1048,7 +1056,7 @@ services:
   dockhand:
     image: fnsys/dockhand:latest
     container_name: dockhand
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 256M
@@ -1064,7 +1072,7 @@ services:
       socket-proxy:
         condition: service_healthy
     group_add:
-      - "65540"  # Use host's Docker GID
+      - "65536"  # Use host's Docker GID
     volumes:
       - $APPDIR/dockhand:/app/data:rw
       - $APPDIR:/compose
@@ -1099,7 +1107,7 @@ services:
   notifiarr:
     image: golift/notifiarr:latest
     container_name: notifiarr
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
@@ -1148,12 +1156,12 @@ services:
   vaultwarden:
     image: vaultwarden/server:latest
     container_name: vaultwarden
-    deploy:  
+    deploy:
       resources:
         limits:
           memory: 128M
     restart: unless-stopped
-    healthcheck:                                                                                                                                                                   
+    healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 5s
@@ -1181,10 +1189,10 @@ services:
       # HTTP Routers Auth Bypass
       - traefik.http.routers.vaultwarden-api.entrypoints=https
       - traefik.http.routers.vaultwarden-api.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/api`)
-      - traefik.http.routers.vaultwarden-api.priority=20
+      - traefik.http.routers.vaultwarden-api.priority=100
       - traefik.http.routers.vaultwarden-identity.entrypoints=https
       - traefik.http.routers.vaultwarden-identity.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/identity`)
-      - traefik.http.routers.vaultwarden-identity.priority=20
+      - traefik.http.routers.vaultwarden-identity.priority=100
       # Middlewares
       - traefik.http.routers.vaultwarden.middlewares=chain-auth@file
       - traefik.http.routers.vaultwarden-api.middlewares=chain-api@file
