@@ -262,10 +262,10 @@ services:
       # - DNS_SERVER=https://1.1.1.1/dns-query
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
-      - HEALTH_TARGET_ADDRESSES=cloudflare.com:443,github.com:443
-      - HEALTH_ICMP_TARGET_IPS=1.1.1.1,8.8.8.8
-      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
-      - HEALTH_RESTART_VPN=on
+      # - HEALTH_TARGET_ADDRESSES=cloudflare.com:443,github.com:443
+      # - HEALTH_ICMP_TARGET_IPS=1.1.1.1,8.8.8.8
+      # - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      # - HEALTH_RESTART_VPN=on
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
@@ -469,7 +469,7 @@ services:
           memory: 512M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9997/"]
+      test: ["CMD", "wget", "-qO-", "http://gluetun:9997/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -503,6 +503,37 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
+  # qbit_restart - torrent client restart when gluetun fails
+  restart-qbittorrent:
+    image: jakub95/restart-qbittorrent:latest
+    container_name: restart-qbittorrent
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "restart-qbittorrent.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      socket-proxy:
+    depends_on:
+      qbittorrent:
+        condition: service_started
+    environment:
+      - TZ=$TZ
+      - QBITTORRENT_CONTAINER_NAME=qbittorrent
+      - GLUETUN_CONTAINER_NAME=gluetun
+      - DOCKER_HOST=tcp://socket-proxy:2375
+    labels:
+      - traefik.enable=false
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
   # qbit_manage - torrent client management
   qbit_manage:
     image: bobokun/qbit_manage
@@ -522,9 +553,9 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    depends_on:
-      qbittorrent:
-        condition: service_healthy
+    # depends_on:
+      # qbittorrent:
+        # condition: service_healthy
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -575,9 +606,9 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    depends_on:
-      qbittorrent:
-        condition: service_healthy
+    # depends_on:
+      # qbittorrent:
+        # condition: service_healthy
     volumes:
       - $APPDIR/autobrr:/config
     environment:
