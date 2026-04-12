@@ -4,15 +4,21 @@ http:
     # Basic rate limiting
     basic-ratelimit:
       rateLimit:
-        average: 100          # 100 requests per period
-        burst: 50             # Allow burst of 50 requests
+        average: 200          # 100 requests per period
+        burst: 100             # Allow burst of 50 requests
         period: 1m            # Per minute (default)
-    
+
     # Stricter rate limiting for API endpoints
     api-ratelimit:
       rateLimit:
-        average: 50
-        burst: 25
+        average: 200
+        burst: 75
+        period: 1m
+
+    sabnzbd-ratelimit:
+      rateLimit:
+        average: 300   # NZB360 polls ~60/min; headroom for bursts and multi-client
+        burst: 100
         period: 1m
 
     compress:
@@ -35,9 +41,9 @@ http:
         stsIncludeSubdomains: true
         stsPreload: true
         forceSTSHeader: true
-        
+
         contentSecurityPolicy: >
-          frame-src 'self' 
+          frame-src 'self'
                    https://*.plex.tv https://plex.tv
                    https://*.brunswickmedia.co.za
                    https://brunswickmedia.co.za
@@ -85,12 +91,12 @@ http:
         stsIncludeSubdomains: true
         stsPreload: true
         forceSTSHeader: true
-        
+
         # Plex-tuned CSP - more permissive than static sites but still secure
         contentSecurityPolicy: |
           default-src 'self';
-          script-src 'self' 'unsafe-inline' 'unsafe-eval' 
-                   https://*.plex.tv https://plex.tv 
+          script-src 'self' 'unsafe-inline' 'unsafe-eval'
+                   https://*.plex.tv https://plex.tv
                    https://*.plex.direct https://*.plex.services
                    https://*.cloudfront.net https://*.amazonaws.com
                    https://www.gstatic.com https://www.google.com
@@ -98,26 +104,26 @@ http:
                    https://*.stripe.com https://stripe.com
                    https://*.brunswickmedia.co.za
                    blob:;
-          style-src 'self' 'unsafe-inline' 
+          style-src 'self' 'unsafe-inline'
                    https://*.plex.tv https://plex.tv
                    https://fonts.googleapis.com
                    https://*.googleapis.com;
           img-src 'self' data: blob: https: http:;
-          font-src 'self' data: 
-                   https://fonts.gstatic.com 
+          font-src 'self' data:
+                   https://fonts.gstatic.com
                    https://*.plex.tv;
-          connect-src 'self' 
-                     https://*.plex.tv https://plex.tv 
+          connect-src 'self'
+                     https://*.plex.tv https://plex.tv
                      https://*.plex.direct https://*.plex.services
                      https://pubsub.plex.tv wss://pubsub.plex.tv
                      https://*.brunswickmedia.co.za
                      wss: ws:;
-          media-src 'self' blob: data: 
+          media-src 'self' blob: data:
                     https://*.plex.tv
                     http://*.plex.direct
                     https://*.brunswickmedia.co.za;
           worker-src 'self' blob:;
-          frame-src 'self' 
+          frame-src 'self'
                    https://*.plex.tv https://plex.tv
                    https://*.brunswickmedia.co.za
                    https://brunswickmedia.co.za
@@ -138,14 +144,14 @@ http:
         addVaryHeader: true
 
         permissionsPolicy: |
-          camera=(), 
-          microphone=(), 
-          geolocation=(), 
-          payment=(self https://*.stripe.com), 
+          camera=(),
+          microphone=(),
+          geolocation=(),
+          payment=(self https://*.stripe.com),
           usb=(),
           vr=(),
           autoplay=(self)
-        
+
         customResponseHeaders:
           X-XSS-Protection: "0"        # Disabled — deprecated and harmful in some browsers
           X-Robots-Tag: "noindex, nofollow"
