@@ -230,7 +230,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -262,19 +262,16 @@ services:
       # - DNS_SERVER=https://1.1.1.1/dns-query
       - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
       - DNS_UPSTREAM_RESOLVERS=cloudflare
-      # - HEALTH_TARGET_ADDRESSES=cloudflare.com:443,github.com:443
-      # - HEALTH_ICMP_TARGET_IPS=1.1.1.1,8.8.8.8
-      # - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
-      # - HEALTH_RESTART_VPN=on
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
       - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=25s
+      # - WIREGUARD_MTU=1320
       - SERVER_COUNTRIES=Netherlands
       - UPDATER_PERIOD=24h #Frequent DNS Update was causing qbit to lose connection
       - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
       - FIREWALL_VPN_INPUT_PORTS=51007
-      - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
+      # - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=/config/auth/config.toml
       # - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE='{"auth":"none"}'
       - LOG_LEVEL=info
     logging:
@@ -287,15 +284,15 @@ services:
       - traefik.http.routers.qbittorrent.entrypoints=https
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
       # HTTP Routers Auth Bypass (for NZB360 — qBit uses its own session auth on /api/v2)
-      - traefik.http.routers.qbittorrent-bypass.entrypoints=https
-      - traefik.http.routers.qbittorrent-bypass.rule=Host(`qbittorrent.$DOMAINNAME`) && PathPrefix(`/api/v2`)
-      - traefik.http.routers.qbittorrent-bypass.priority=100
+      # - traefik.http.routers.qbittorrent-bypass.entrypoints=https
+      # - traefik.http.routers.qbittorrent-bypass.rule=Host(`qbittorrent.$DOMAINNAME`) && PathPrefix(`/api/v2`)
+      # - traefik.http.routers.qbittorrent-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
-      - traefik.http.routers.qbittorrent-bypass.middlewares=chain-downloaders-api@file
+      # - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
+      # - traefik.http.routers.qbittorrent-bypass.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      - traefik.http.routers.qbittorrent-bypass.service=qbittorrent
+      # - traefik.http.routers.qbittorrent-bypass.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
       ## Updating and notifications
       - org.hotio.pullio.notify=true
@@ -468,12 +465,6 @@ services:
         limits:
           memory: 512M
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://gluetun:9997/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
     security_opt:
       - no-new-privileges:true
     network_mode: "service:gluetun"
@@ -495,37 +486,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    labels:
-      - traefik.enable=false
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
-  # qbit_restart - torrent client restart when gluetun fails
-  restart-qbittorrent:
-    image: jakub95/restart-qbittorrent:latest
-    container_name: restart-qbittorrent
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "restart-qbittorrent.sh"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      socket-proxy:
-    depends_on:
-      qbittorrent:
-        condition: service_started
-    environment:
-      - TZ=$TZ
-      - QBITTORRENT_CONTAINER_NAME=qbittorrent
-      - GLUETUN_CONTAINER_NAME=gluetun
-      - DOCKER_HOST=tcp://socket-proxy:2375
     labels:
       - traefik.enable=false
       ## Updating and notifications
