@@ -4,16 +4,17 @@ http:
     chain-auth:
       chain:
         middlewares:
-          - "generic-headers"
+          # - "generic-headers"
           - "basic-ratelimit"
           - "auth"
           - "compress"
+          - "crowdsec"
 
     # Chain: Rate limiting, generic Traefik headers with CORS
     chain-noauth:
       chain:
         middlewares:
-          - "generic-headers"
+          # - "generic-headers"
           - "basic-ratelimit"
           - "compress"
 
@@ -22,12 +23,4 @@ http:
       chain:
         middlewares:
           - "api-ratelimit"
-          - "compress"
-
-    # Chain for Plex & Tautulli
-    chain-media:
-      chain:
-        middlewares:
-          - "media-headers"
-          - "basic-ratelimit"
           - "compress"
