@@ -40,7 +40,7 @@ http:
           crowdsecAppsecHost: crowdsec:7422
           crowdsecAppsecFailureBlock: false
           crowdsecAppsecUnreachableBlock: false
-          crowdsecLapiKey: azrlN5i8w22cuEVFVYLutKLOzZGYeuNYdB181BtMdSQ
+          crowdsecLapiKey: #INSERT YOURS
           crowdsecLapiHost: crowdsec:8080
           crowdsecLapiScheme: http
           crowdsecLapiTLSInsecureVerify: true
