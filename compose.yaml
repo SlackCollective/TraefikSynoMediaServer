@@ -53,39 +53,52 @@ services:
       - --providers.docker.network=mediaserver
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
-      - --entrypoints.http.address=:80
-      - --entrypoints.https.address=:443
-      - --entrypoints.http.http.redirections.entrypoint.to=https
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entryPoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.asDefault=true 
       # For headers
-      - --entrypoints.http.forwardedHeaders.trustedIPs=$TRUSTED_IPS
-      - --entrypoints.https.forwardedHeaders.trustedIPs=$TRUSTED_IPS
+      - --entrypoints.web.forwardedHeaders.trustedIPs=$TRUSTED_IPS
+      - --entrypoints.websecure.forwardedHeaders.trustedIPs=$TRUSTED_IPS
       # Logging
+      - --entryPoints.web.observability.accessLogs=true
+      - --entryPoints.websecure.observability.accessLogs=true
+      - --log.filepath=/logs/traefik.log
+      - --log.format=json
       - --log.level=ERROR
-      - --entryPoints.http.observability.accessLogs=true
-      - --entryPoints.https.observability.accessLogs=true
+      - --accesslog=true
+      - --accesslog.filepath=/logs/access.log
+      - --accesslog.format=json
       - --accesslog.bufferingsize=50
+      - --accesslog.fields.names.ClientIP=keep
+      - --accesslog.fields.names.RequestHost=keep                                                                                                             
+      - --accesslog.fields.names.RequestPath=keep
       - --accesslog.filters.statuscodes=300-302,400-599
       - --accesslog.filters.retryattempts=false
       - --accesslog.filters.minduration=5s
-      - --metrics.prometheus=false
+      - --metrics.prometheus=true
       # TLS
-      - --entrypoints.https.http.tls=true
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.certresolver=cloudflare
+      - --certificatesresolvers.cloudflare.acme.tlschallenge=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
-      - --entrypoints.https.http.tls.certresolver=cloudflare
-      - --entrypoints.https.http.tls.domains[0].main=$DOMAINNAME
-      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAINNAME
+      - --entrypoints.websecure.http.tls.domains[0].main=$DOMAINNAME
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.$DOMAINNAME
       - --certificatesresolvers.cloudflare.acme.email=$CF_EMAIL
       - --certificatesresolvers.cloudflare.acme.storage=/certs/acme.json
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.cloudflare.acme.dnsChallenge.propagation.delayBeforeChecks=90
       # Plugins
-      # - --experimental.plugins.crowdsec-plugin.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      # - --experimental.plugins.crowdsec-plugin.version=v1.5.1
+      - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.5.1
+      # - --entrypoints.websecure.http.middlewares=chain-auth@file
     volumes:
       - $APPDIR/traefik:/etc/traefik
       - $APPDIR/traefik/rules:/rules
       - $DOCKERDIR/certs:/certs
+      - $APPDIR/traefik/logs:/logs
     environment:
       - GOMAXPROCS=2
       - TZ=$TZ
@@ -99,12 +112,63 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers - Dashboard
-      - traefik.http.routers.dashboard.entrypoints=https
+      - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.dashboard.middlewares=auth@file
+      - traefik.http.routers.dashboard.middlewares=chain-auth@file
       # Services - API
       - traefik.http.routers.dashboard.service=api@internal
+      ## Updating and notifications
+      - org.hotio.pullio.notify=true
+      - org.hotio.pullio.update=true
+      - org.hotio.pullio.discord.webhook=$DISCORD
+      - org.hotio.pullio.generic.webhook=$PULLIO
+
+  # CrowdSec - crowdsourced blocking of bad actors
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    container_name: crowdsec
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet --tries=1 --timeout=5 http://localhost:8080/health > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - traefik
+    networks:
+      mediaserver:
+    ports:
+      - 127.0.0.1:9286:8080 # port mapping for local firewall bouncers
+    expose:
+      - 8080 # http api for bouncers
+      - 6060 # metrics endpoint for prometheus
+      # - 7422 # appsec waf endpoint
+    environment:
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios
+      - GID=$PGID
+      - BOUNCER_KEY_TRAEFIK=$CROWDSEC
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      # crowdsec container data
+      - $APPDIR/crowdsec/data:/var/lib/crowdsec/data
+      - $APPDIR/crowdsec/etc:/etc/crowdsec
+      # Synology CA cert to fix TLS verification against version.crowdsec.net
+      - /usr/syno/etc/certificate/system/default/syno-ca-cert.pem:/usr/local/share/ca-certificates/synology.crt:ro
+      # log bind mounts into crowdsec
+      - /var/log/syslog.log:/var/log/syslog.log:ro
+      - $APPDIR/traefik/logs/access.log:/var/log/traefik/access.log:ro
+    labels:
+      - traefik.enable=false
       ## Updating and notifications
       - org.hotio.pullio.notify=true
       - org.hotio.pullio.update=true
@@ -211,7 +275,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.auth.entrypoints=https
+      - traefik.http.routers.auth.entrypoints=websecure
       - traefik.http.routers.auth.rule=Host(`auth.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.auth.middlewares=chain-noauth@file
@@ -281,18 +345,12 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.qbittorrent.entrypoints=https
+      - traefik.http.routers.qbittorrent.entrypoints=websecure
       - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.$DOMAINNAME`)
-      # HTTP Routers Auth Bypass (for NZB360 — qBit uses its own session auth on /api/v2)
-      # - traefik.http.routers.qbittorrent-bypass.entrypoints=https
-      # - traefik.http.routers.qbittorrent-bypass.rule=Host(`qbittorrent.$DOMAINNAME`) && PathPrefix(`/api/v2`)
-      # - traefik.http.routers.qbittorrent-bypass.priority=100
       # Middlewares
-      # - traefik.http.routers.qbittorrent.middlewares=chain-auth@file
-      # - traefik.http.routers.qbittorrent-bypass.middlewares=chain-noauth@file
+      - traefik.http.routers.qbittorrent.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.qbittorrent.service=qbittorrent
-      # - traefik.http.routers.qbittorrent-bypass.service=qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=9997
       ## Updating and notifications
       - org.hotio.pullio.notify=true
@@ -333,7 +391,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.organizr.entrypoints=https
+      - traefik.http.routers.organizr.entrypoints=websecure
       - traefik.http.routers.organizr.rule=Host(`$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.organizr.middlewares=chain-auth@file
@@ -383,10 +441,10 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.entrypoints=websecure
       - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass (for NZB360)
-      - traefik.http.routers.prowlarr-bypass.entrypoints=https
+      - traefik.http.routers.prowlarr-bypass.entrypoints=websecure
       - traefik.http.routers.prowlarr-bypass.rule=Host(`prowlarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$PROWLARR_API_KEY`) || Query(`apikey`, `$PROWLARR_API_KEY`))
       - traefik.http.routers.prowlarr-bypass.priority=100
       # Middlewares
@@ -437,15 +495,15 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.sabnzbd.entrypoints=https
+      - traefik.http.routers.sabnzbd.entrypoints=websecure
       - traefik.http.routers.sabnzbd.rule=Host(`sabnzbd.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.sabnzbd-bypass.entrypoints=https
+      - traefik.http.routers.sabnzbd-bypass.entrypoints=websecure
       - traefik.http.routers.sabnzbd-bypass.rule=Host(`sabnzbd.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SABNZBD_API_KEY`) || Query(`apikey`, `$SABNZBD_API_KEY`))
       - traefik.http.routers.sabnzbd-bypass.priority=100
       # Middlewares
       - traefik.http.routers.sabnzbd.middlewares=chain-auth@file
-      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-downloaders-api@file
+      - traefik.http.routers.sabnzbd-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.sabnzbd.service=sabnzbd
       - traefik.http.routers.sabnzbd-bypass.service=sabnzbd
@@ -465,6 +523,12 @@ services:
         limits:
           memory: 512M
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9997/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     network_mode: "service:gluetun"
@@ -533,7 +597,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.qbitmanage.entrypoints=https
+      - traefik.http.routers.qbitmanage.entrypoints=websecure
       - traefik.http.routers.qbitmanage.rule=Host(`qbitmanage.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.qbitmanage.middlewares=chain-auth@file
@@ -581,7 +645,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.autobrr.entrypoints=https
+      - traefik.http.routers.autobrr.entrypoints=websecure
       - traefik.http.routers.autobrr.rule=Host(`autobrr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.autobrr.middlewares=chain-auth@file
@@ -631,10 +695,10 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.radarr.entrypoints=https
+      - traefik.http.routers.radarr.entrypoints=websecure
       - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.radarr-bypass.entrypoints=https
+      - traefik.http.routers.radarr-bypass.entrypoints=websecure
       - traefik.http.routers.radarr-bypass.rule=Host(`radarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       - traefik.http.routers.radarr-bypass.priority=100
       # Middlewares
@@ -686,10 +750,10 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.sonarr.entrypoints=https
+      - traefik.http.routers.sonarr.entrypoints=websecure
       - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.sonarr-bypass.entrypoints=https
+      - traefik.http.routers.sonarr-bypass.entrypoints=websecure
       - traefik.http.routers.sonarr-bypass.rule=Host(`sonarr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       - traefik.http.routers.sonarr-bypass.priority=100
       # Middlewares
@@ -734,7 +798,7 @@ services:
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
-      - $RAMDISK=temp
+      - $APPDIR/plex/temp:/temp
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -748,10 +812,10 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.plex.entrypoints=https
+      - traefik.http.routers.plex.entrypoints=websecure
       - traefik.http.routers.plex.rule=Host(`plex.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.plex.middlewares=chain-media@file
+      - traefik.http.routers.plex.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.plex.service=plex
       - traefik.http.services.plex.loadbalancer.server.port=32400
@@ -821,7 +885,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.tdarr.entrypoints=https
+      - traefik.http.routers.tdarr.entrypoints=websecure
       - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.tdarr.middlewares=chain-auth@file
@@ -872,14 +936,14 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.tautulli.entrypoints=https
+      - traefik.http.routers.tautulli.entrypoints=websecure
       - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.tautulli-bypass.entrypoints=https
+      - traefik.http.routers.tautulli-bypass.entrypoints=websecure
       - traefik.http.routers.tautulli-bypass.rule=Host(`tautulli.$DOMAINNAME`) && (Header(`X-Api-Key`, `$TAUTULLI_API_KEY`) || Query(`apikey`, `$TAUTULLI_API_KEY`))
       - traefik.http.routers.tautulli-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.tautulli.middlewares=chain-media@file
+      - traefik.http.routers.tautulli.middlewares=chain-noauth@file
       - traefik.http.routers.tautulli-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.tautulli.service=tautulli
@@ -929,14 +993,14 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.overseerr.entrypoints=https
+      - traefik.http.routers.overseerr.entrypoints=websecure
       - traefik.http.routers.overseerr.rule=Host(`overseerr.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.overseerr-bypass.entrypoints=https
+      - traefik.http.routers.overseerr-bypass.entrypoints=websecure
       - traefik.http.routers.overseerr-bypass.rule=Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))
       - traefik.http.routers.overseerr-bypass.priority=100
       # Middlewares
-      - traefik.http.routers.overseerr.middlewares=chain-media@file
+      - traefik.http.routers.overseerr.middlewares=chain-noauth@file
       - traefik.http.routers.overseerr-bypass.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.overseerr.service=overseerr
@@ -979,10 +1043,10 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.maintainerr.entrypoints=https
+      - traefik.http.routers.maintainerr.entrypoints=websecure
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=chain-media@file
+      - traefik.http.routers.maintainerr.middlewares=chain-noauth@file
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
@@ -1029,7 +1093,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.books.entrypoints=https
+      - traefik.http.routers.books.entrypoints=websecure
       - traefik.http.routers.books.rule=Host(`books.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.books.middlewares=chain-auth@file
@@ -1081,7 +1145,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.dockhand.entrypoints=https
+      - traefik.http.routers.dockhand.entrypoints=websecure
       - traefik.http.routers.dockhand.rule=Host(`dockhand.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.dockhand.middlewares=chain-auth@file
@@ -1129,7 +1193,7 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers
-      - traefik.http.routers.notifiarr.entrypoints=https
+      - traefik.http.routers.notifiarr.entrypoints=websecure
       - traefik.http.routers.notifiarr.rule=Host(`notifiarr.$DOMAINNAME`)
       # Middlewares
       - traefik.http.routers.notifiarr.middlewares=chain-auth@file
@@ -1175,13 +1239,13 @@ services:
         max-file: "3"
     labels:
       # HTTP Routers (web vault — stays behind OAuth + frame-ancestors: none)
-      - traefik.http.routers.vaultwarden.entrypoints=https
+      - traefik.http.routers.vaultwarden.entrypoints=websecure
       - traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.$DOMAINNAME`)
       # HTTP Routers Auth Bypass
-      - traefik.http.routers.vaultwarden-api.entrypoints=https
+      - traefik.http.routers.vaultwarden-api.entrypoints=websecure
       - traefik.http.routers.vaultwarden-api.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/api`)
       - traefik.http.routers.vaultwarden-api.priority=100
-      - traefik.http.routers.vaultwarden-identity.entrypoints=https
+      - traefik.http.routers.vaultwarden-identity.entrypoints=websecure
       - traefik.http.routers.vaultwarden-identity.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/identity`)
       - traefik.http.routers.vaultwarden-identity.priority=100
       # Middlewares
