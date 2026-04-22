@@ -11,13 +11,7 @@ http:
     # Stricter rate limiting for API endpoints
     api-ratelimit:
       rateLimit:
-        average: 200
-        burst: 75
-        period: 1m
-
-    sabnzbd-ratelimit:
-      rateLimit:
-        average: 300   # NZB360 polls ~60/min; headroom for bursts and multi-client
+        average: 300
         burst: 100
         period: 1m
 
@@ -31,8 +25,33 @@ http:
         maxResponseBodySize: 12288
         authResponseHeaders:
           - "X-Forwarded-User"
+          - "X-Forwarded-For"
           - "X-Forwarded-Displayname"
-          - "X-Authenticated-User"
+          # - "X-Authenticated-User"
+          # - "CF-Connecting-IP"
+
+    crowdsec:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: ERROR
+          crowdsecMode: stream
+          crowdsecAppsecEnabled: false
+          crowdsecAppsecHost: crowdsec:7422
+          crowdsecAppsecFailureBlock: false
+          crowdsecAppsecUnreachableBlock: false
+          crowdsecLapiKey: azrlN5i8w22cuEVFVYLutKLOzZGYeuNYdB181BtMdSQ
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          crowdsecLapiTLSInsecureVerify: true
+          forwardedHeadersTrustedIPs:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.1.0/24
+          clientTrustedIPs:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.1.0/24
 
     # Generic headers
     generic-headers:
@@ -45,8 +64,7 @@ http:
         contentSecurityPolicy: >
           frame-src 'self'
                    https://*.plex.tv https://plex.tv
-                   https://*.brunswickmedia.co.za
-                   https://brunswickmedia.co.za
+                   https://brunswickmedia.co.za https://*.brunswickmedia.co.za
                    https://*.google.com;
           img-src 'self' data: blob: https: http:;
           frame-ancestors 'self' https://app.plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
@@ -83,76 +101,3 @@ http:
             X-XSS-Protection: "0"
             X-Robots-Tag: "noindex, nofollow"
             Server: ""
-
-    # Curated headers for Plex
-    media-headers:
-      headers:
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        stsPreload: true
-        forceSTSHeader: true
-
-        # Plex-tuned CSP - more permissive than static sites but still secure
-        contentSecurityPolicy: |
-          default-src 'self';
-          script-src 'self' 'unsafe-inline' 'unsafe-eval'
-                   https://*.plex.tv https://plex.tv
-                   https://*.plex.direct https://*.plex.services
-                   https://*.cloudfront.net https://*.amazonaws.com
-                   https://www.gstatic.com https://www.google.com
-                   https://*.googleapis.com
-                   https://*.stripe.com https://stripe.com
-                   https://*.brunswickmedia.co.za
-                   blob:;
-          style-src 'self' 'unsafe-inline'
-                   https://*.plex.tv https://plex.tv
-                   https://fonts.googleapis.com
-                   https://*.googleapis.com;
-          img-src 'self' data: blob: https: http:;
-          font-src 'self' data:
-                   https://fonts.gstatic.com
-                   https://*.plex.tv;
-          connect-src 'self'
-                     https://*.plex.tv https://plex.tv
-                     https://*.plex.direct https://*.plex.services
-                     https://pubsub.plex.tv wss://pubsub.plex.tv
-                     https://*.brunswickmedia.co.za
-                     wss: ws:;
-          media-src 'self' blob: data:
-                    https://*.plex.tv
-                    http://*.plex.direct
-                    https://*.brunswickmedia.co.za;
-          worker-src 'self' blob:;
-          frame-src 'self'
-                   https://*.plex.tv https://plex.tv
-                   https://*.brunswickmedia.co.za
-                   https://brunswickmedia.co.za
-          frame-ancestors 'self' https://app.plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
-          base-uri 'self';
-          form-action 'self' https://*.plex.tv https://plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
-          upgrade-insecure-requests;
-
-        accessControlAllowMethods:
-          - GET
-          - POST
-          - DELETE
-          - OPTIONS
-          - PUT
-        accessControlAllowHeaders: "*"
-        accessControlAllowOriginList: "*"
-        accessControlMaxAge: 100
-        addVaryHeader: true
-
-        permissionsPolicy: |
-          camera=(),
-          microphone=(),
-          geolocation=(),
-          payment=(self https://*.stripe.com),
-          usb=(),
-          vr=(),
-          autoplay=(self)
-
-        customResponseHeaders:
-          X-XSS-Protection: "0"        # Disabled — deprecated and harmful in some browsers
-          X-Robots-Tag: "noindex, nofollow"
-          Server: ""
