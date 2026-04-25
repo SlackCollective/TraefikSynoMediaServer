@@ -906,6 +906,8 @@ services:
     depends_on:
       plex:
         condition: service_healthy
+      prowlarr:
+        condition: service_started
     volumes:
       - $APPDIR/seerr:/app/config
       - $DATADIR/media:/data/media:ro
@@ -959,6 +961,9 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    depends_on:
+      plex:
+        condition: service_healthy
     volumes:
       - $APPDIR/maintainerr:/opt/data
     environment:
