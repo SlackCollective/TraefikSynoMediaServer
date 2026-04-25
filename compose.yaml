@@ -81,7 +81,7 @@ services:
       # TLS
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
-      - --certificatesresolvers.cloudflare.acme.tlschallenge=true
+      # - --certificatesresolvers.cloudflare.acme.tlschallenge=true
       # - --certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
       - --entrypoints.websecure.http.tls.domains[0].main=$DOMAINNAME
       - --entrypoints.websecure.http.tls.domains[0].sans=*.$DOMAINNAME
@@ -144,7 +144,7 @@ services:
     networks:
       mediaserver:
     ports:
-      - 127.0.0.1:9286:8080 # port mapping for local firewall bouncers
+      - 9286:8080 # port mapping for local firewall bouncers
     expose:
       - 8080 # http api for bouncers
       - 6060 # metrics endpoint for prometheus
@@ -264,8 +264,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 4181:4181
+    # ports:
+      # - 4181:4181
     volumes:
       - $APPDIR/auth:/etc/traefik-forward-auth
     logging:
@@ -424,8 +424,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    ports:
-      - 9696:9696
+    # ports:
+      # - 9696:9696
     volumes:
       - $APPDIR/prowlarr:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -577,9 +577,9 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    # depends_on:
-      # qbittorrent:
-        # condition: service_healthy
+    depends_on:
+      qbittorrent:
+        condition: service_healthy
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -825,79 +825,6 @@ services:
       - org.hotio.pullio.discord.webhook=$DISCORD
       - org.hotio.pullio.generic.webhook=$PULLIO
 
-  ############################# MEDIA FILE MANAGEMENT
-  # Tdarr - Transcode for compatibility with Plex streaming
-  tdarr:
-    image: ghcr.io/haveagitgat/tdarr:latest
-    container_name: tdarr
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8266/api/v2/status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      mediaserver:
-    ports:
-      - 8265:8265
-    devices:
-      - /dev/dri:/dev/dri
-    group_add:
-      - "937"  # videodriver group on Synology
-    volumes:
-      - $APPDIR/tdarr/server:/app/server
-      - $APPDIR/tdarr/configs:/app/configs
-      - $APPDIR/tdarr/logs:/app/logs
-      - $APPDIR/tdarr/temp:/temp
-      - $DATADIR/media/tv:/tv
-      - $DATADIR/media/movies:/movies
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-      - UMASK_SET=002
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - webUIPort=8265
-      - internalNode=true
-      - inContainer=true
-      - nodeName=TdarrNode
-      - auth=false
-      - openBrowser=false
-      - maxLogSizeMB=4
-      - cronPluginUpdate=
-      - NVIDIA_VISIBLE_DEVICES=void
-      - ffmpegVersion=6
-      - VAAPI_DEVICE=/dev/dri/renderD128
-      - TDARR_MAX_SIMULTANEOUS_ENCODES=1
-      - logLevel=error
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      # HTTP Routers
-      - traefik.http.routers.tdarr.entrypoints=websecure
-      - traefik.http.routers.tdarr.rule=Host(`tdarr.$DOMAINNAME`)
-      # Middlewares
-      - traefik.http.routers.tdarr.middlewares=chain-auth@file
-      # HTTP Services
-      - traefik.http.routers.tdarr.service=tdarr
-      - traefik.http.services.tdarr.loadbalancer.server.port=8265
-      ## Updating and notifications
-      - org.hotio.pullio.notify=true
-      - org.hotio.pullio.update=true
-      - org.hotio.pullio.discord.webhook=$DISCORD
-      - org.hotio.pullio.generic.webhook=$PULLIO
-
   ############################# PLEX MONITORING/MANAGEMENT
   # Tautulli - Media play and user monitoring
   tautulli:
@@ -1046,7 +973,7 @@ services:
       - traefik.http.routers.maintainerr.entrypoints=websecure
       - traefik.http.routers.maintainerr.rule=Host(`maintainerr.$DOMAINNAME`)
       # Middlewares
-      - traefik.http.routers.maintainerr.middlewares=chain-noauth@file
+      - traefik.http.routers.maintainerr.middlewares=chain-auth@file
       # HTTP Services
       - traefik.http.routers.maintainerr.service=maintainerr
       - traefik.http.services.maintainerr.loadbalancer.server.port=6246
