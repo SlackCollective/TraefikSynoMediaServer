@@ -77,7 +77,7 @@ services:
       - --accesslog.filters.statuscodes=300-302,400-599
       - --accesslog.filters.retryattempts=false
       - --accesslog.filters.minduration=5s
-      - --metrics.prometheus=true
+      # - --metrics.prometheus=true
       # TLS
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.websecure.http.tls.certresolver=cloudflare
@@ -111,6 +111,20 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
+      # CrowdSec bouncer middleware (defined here so $CROWDSEC is substituted from .env)
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.enabled=true
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.logLevel=ERROR
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecMode=stream
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecEnabled=false
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecHost=crowdsec:7422
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecFailureBlock=false
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecUnreachableBlock=false
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiKey=$CROWDSEC
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiHost=crowdsec:8080
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiScheme=http
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiTLSInsecureVerify=true
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedHeadersTrustedIPs=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      - traefik.http.middlewares.crowdsec.plugin.bouncer.clientTrustedIPs=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       # HTTP Routers - Dashboard
       - traefik.http.routers.dashboard.entrypoints=websecure
       - traefik.http.routers.dashboard.rule=Host(`traefik.$DOMAINNAME`)
@@ -424,8 +438,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    # ports:
-      # - 9696:9696
+    ports:
+      - 9696:9696
     volumes:
       - $APPDIR/prowlarr:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -572,14 +586,14 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     networks:
       mediaserver:
     depends_on:
       qbittorrent:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - $APPDIR/qbitmanage:/config:rw
       - $APPDIR/qbittorrent/:/qbittorrent/:ro
@@ -630,9 +644,6 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
-    # depends_on:
-      # qbittorrent:
-        # condition: service_healthy
     volumes:
       - $APPDIR/autobrr:/config
     environment:
@@ -678,6 +689,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 7878:7878
     depends_on:
       prowlarr:
         condition: service_started
@@ -733,6 +746,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 8989:8989
     depends_on:
       prowlarr:
         condition: service_started
@@ -903,6 +918,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 5055:5055
     depends_on:
       plex:
         condition: service_healthy
@@ -961,6 +978,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 6246:6246
     depends_on:
       plex:
         condition: service_healthy
@@ -1110,6 +1129,8 @@ services:
       - no-new-privileges:true
     networks:
       mediaserver:
+    ports:
+      - 5454:5454
     volumes:
       - $APPDIR/notifiarr:/config
       - /var/run/utmp:/var/run/utmp:ro
@@ -1146,7 +1167,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
@@ -1180,14 +1201,19 @@ services:
       - traefik.http.routers.vaultwarden-identity.entrypoints=websecure
       - traefik.http.routers.vaultwarden-identity.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/identity`)
       - traefik.http.routers.vaultwarden-identity.priority=100
+      - traefik.http.routers.vaultwarden-notifications.entrypoints=websecure
+      - traefik.http.routers.vaultwarden-notifications.rule=Host(`vaultwarden.$DOMAINNAME`) && PathPrefix(`/notifications`)
+      - traefik.http.routers.vaultwarden-notifications.priority=100
       # Middlewares
       - traefik.http.routers.vaultwarden.middlewares=chain-auth@file
       - traefik.http.routers.vaultwarden-api.middlewares=chain-api@file
       - traefik.http.routers.vaultwarden-identity.middlewares=chain-api@file
+      - traefik.http.routers.vaultwarden-notifications.middlewares=chain-api@file
       # HTTP Services
       - traefik.http.routers.vaultwarden.service=vaultwarden
       - traefik.http.routers.vaultwarden-api.service=vaultwarden
       - traefik.http.routers.vaultwarden-identity.service=vaultwarden
+      - traefik.http.routers.vaultwarden-notifications.service=vaultwarden
       - traefik.http.services.vaultwarden.loadbalancer.server.port=80
       ## Updating and notifications
       - org.hotio.pullio.notify=true
