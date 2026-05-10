@@ -4,15 +4,15 @@ http:
     # Basic rate limiting
     basic-ratelimit:
       rateLimit:
-        average: 200          # 100 requests per period
-        burst: 100             # Allow burst of 50 requests
+        average: 400          # 400 requests per period
+        burst: 300             # Allow burst of 300 requests
         period: 1m            # Per minute (default)
 
     # Stricter rate limiting for API endpoints
     api-ratelimit:
       rateLimit:
-        average: 300
-        burst: 100
+        average: 350
+        burst: 250
         period: 1m
 
     compress:
@@ -27,77 +27,3 @@ http:
           - "X-Forwarded-User"
           - "X-Forwarded-For"
           - "X-Forwarded-Displayname"
-          # - "X-Authenticated-User"
-          # - "CF-Connecting-IP"
-
-    crowdsec:
-      plugin:
-        bouncer:
-          enabled: true
-          logLevel: ERROR
-          crowdsecMode: stream
-          crowdsecAppsecEnabled: false
-          crowdsecAppsecHost: crowdsec:7422
-          crowdsecAppsecFailureBlock: false
-          crowdsecAppsecUnreachableBlock: false
-          crowdsecLapiKey: #INSERT YOURS
-          crowdsecLapiHost: crowdsec:8080
-          crowdsecLapiScheme: http
-          crowdsecLapiTLSInsecureVerify: true
-          forwardedHeadersTrustedIPs:
-            - 10.0.0.0/8
-            - 172.16.0.0/12
-            - 192.168.1.0/24
-          clientTrustedIPs:
-            - 10.0.0.0/8
-            - 172.16.0.0/12
-            - 192.168.1.0/24
-
-    # Generic headers
-    generic-headers:
-      headers:
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        stsPreload: true
-        forceSTSHeader: true
-
-        contentSecurityPolicy: >
-          frame-src 'self'
-                   https://*.plex.tv https://plex.tv
-                   https://brunswickmedia.co.za https://*.brunswickmedia.co.za
-                   https://*.google.com;
-          img-src 'self' data: blob: https: http:;
-          frame-ancestors 'self' https://app.plex.tv https://brunswickmedia.co.za https://*.brunswickmedia.co.za;
-
-          default-src 'self';
-          script-src 'self';
-          style-src 'self' 'unsafe-inline';
-          font-src 'self' data:;
-          connect-src 'self';
-          base-uri 'self';
-          form-action 'self';
-          upgrade-insecure-requests;
-
-        accessControlAllowMethods:
-          - GET
-          - POST
-          - DELETE
-          - OPTIONS
-          - PUT
-        accessControlAllowHeaders: "*"
-        accessControlAllowOriginList: "*"
-        accessControlMaxAge: 100
-        addVaryHeader: true
-
-        permissionsPolicy: >
-            camera=(),
-            microphone=(),
-            geolocation=(),
-            payment=(),
-            usb=(),
-            autoplay=()
-
-        customResponseHeaders:
-            X-XSS-Protection: "0"
-            X-Robots-Tag: "noindex, nofollow"
-            Server: ""
