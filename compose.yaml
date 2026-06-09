@@ -884,19 +884,19 @@ services:
       <<: *pullio
       traefik.enable: "true"
       # HTTP Routers
-      traefik.http.routers.overseerr.entrypoints: "websecure"
-      traefik.http.routers.overseerr.rule: "Host(`overseerr.$DOMAINNAME`)"
+      traefik.http.routers.seerr.entrypoints: "websecure"
+      traefik.http.routers.seerr.rule: "Host(`overseerr.$DOMAINNAME`)"
       # HTTP Routers Auth Bypass
-      traefik.http.routers.overseerr-bypass.entrypoints: "websecure"
-      traefik.http.routers.overseerr-bypass.rule: "Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))"
-      traefik.http.routers.overseerr-bypass.priority: "100"
+      traefik.http.routers.seerr-bypass.entrypoints: "websecure"
+      traefik.http.routers.seerr-bypass.rule: "Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))"
+      traefik.http.routers.seerr-bypass.priority: "100"
       # Middlewares
-      traefik.http.routers.overseerr.middlewares: "chain-noauth@file"
-      traefik.http.routers.overseerr-bypass.middlewares: "chain-api@file"
+      traefik.http.routers.seerr.middlewares: "chain-noauth@file"
+      traefik.http.routers.seerr-bypass.middlewares: "chain-api@file"
       # HTTP Services
-      traefik.http.routers.overseerr.service: "overseerr"
-      traefik.http.routers.overseerr-bypass.service: "overseerr"
-      traefik.http.services.overseerr.loadbalancer.server.port: "5055"
+      traefik.http.routers.seerr.service: "seerr"
+      traefik.http.routers.seerr-bypass.service: "seerr"
+      traefik.http.services.seerr.loadbalancer.server.port: "5055"
 
   # Maintainerr - Scrub requested but unwatched media
   maintainerr:
