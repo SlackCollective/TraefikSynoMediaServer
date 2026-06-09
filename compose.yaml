@@ -888,7 +888,7 @@ services:
       traefik.http.routers.seerr.rule: "Host(`overseerr.$DOMAINNAME`)"
       # HTTP Routers Auth Bypass
       traefik.http.routers.seerr-bypass.entrypoints: "websecure"
-      traefik.http.routers.seerr-bypass.rule: "Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$OVERSEERR_API_KEY`) || Query(`apikey`, `$OVERSEERR_API_KEY`))"
+      traefik.http.routers.seerr-bypass.rule: "Host(`overseerr.$DOMAINNAME`) && (Header(`X-Api-Key`, `$SEERR_API_KEY`) || Query(`apikey`, `$SEERR_API_KEY`))"
       traefik.http.routers.seerr-bypass.priority: "100"
       # Middlewares
       traefik.http.routers.seerr.middlewares: "chain-noauth@file"
