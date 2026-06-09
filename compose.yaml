@@ -160,6 +160,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    security_opt: *security_opt
     # depends_on:
       # - traefik
     networks:
@@ -203,6 +204,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    security_opt: *security_opt
     read_only: true
     networks:
       socket-proxy:
