@@ -5,6 +5,7 @@ http:
       chain:
         middlewares:
           - "basic-ratelimit"
+          - "secure-headers"
           - "auth"
           - "compress"
           - "crowdsec@docker"
@@ -14,6 +15,7 @@ http:
       chain:
         middlewares:
           - "basic-ratelimit"
+          - "secure-headers"
           - "compress"
           - "crowdsec@docker"
 
