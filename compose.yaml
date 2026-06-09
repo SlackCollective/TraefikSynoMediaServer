@@ -64,7 +64,7 @@ services:
       - --providers.docker=true
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
       - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
-      - --providers.docker.exposedByDefault=true
+      - --providers.docker.exposedByDefault=false
       - --providers.docker.network=mediaserver
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
       - --providers.file.watch=true # Only works on top level files in the rules folder
@@ -123,6 +123,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # CrowdSec bouncer middleware (defined here so $CROWDSEC is substituted from .env)
       traefik.http.middlewares.crowdsec.plugin.bouncer.enabled: "true"
       traefik.http.middlewares.crowdsec.plugin.bouncer.logLevel: "ERROR"
@@ -277,6 +278,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.auth.entrypoints: "websecure"
       traefik.http.routers.auth.rule: "Host(`auth.$DOMAINNAME`)"
@@ -337,6 +339,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.qbittorrent.entrypoints: "websecure"
       traefik.http.routers.qbittorrent.rule: "Host(`qbittorrent.$DOMAINNAME`)"
@@ -374,6 +377,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.organizr.entrypoints: "websecure"
       traefik.http.routers.organizr.rule: "Host(`$DOMAINNAME`)"
@@ -415,6 +419,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.prowlarr.entrypoints: "websecure"
       traefik.http.routers.prowlarr.rule: "Host(`prowlarr.$DOMAINNAME`)"
@@ -460,6 +465,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.sabnzbd.entrypoints: "websecure"
       traefik.http.routers.sabnzbd.rule: "Host(`sabnzbd.$DOMAINNAME`)"
@@ -544,6 +550,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.qbitmanage.entrypoints: "websecure"
       traefik.http.routers.qbitmanage.rule: "Host(`qbitmanage.$DOMAINNAME`)"
@@ -580,6 +587,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.autobrr.entrypoints: "websecure"
       traefik.http.routers.autobrr.rule: "Host(`autobrr.$DOMAINNAME`)"
@@ -623,6 +631,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.radarr.entrypoints: "websecure"
       traefik.http.routers.radarr.rule: "Host(`radarr.$DOMAINNAME`)"
@@ -671,6 +680,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.sonarr.entrypoints: "websecure"
       traefik.http.routers.sonarr.rule: "Host(`sonarr.$DOMAINNAME`)"
@@ -724,6 +734,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.plex.entrypoints: "websecure"
       traefik.http.routers.plex.rule: "Host(`plex.$DOMAINNAME`)"
@@ -766,6 +777,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.tautulli.entrypoints: "websecure"
       traefik.http.routers.tautulli.rule: "Host(`tautulli.$DOMAINNAME`)"
@@ -818,6 +830,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.overseerr.entrypoints: "websecure"
       traefik.http.routers.overseerr.rule: "Host(`overseerr.$DOMAINNAME`)"
@@ -864,6 +877,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.maintainerr.entrypoints: "websecure"
       traefik.http.routers.maintainerr.rule: "Host(`maintainerr.$DOMAINNAME`)"
@@ -905,6 +919,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.books.entrypoints: "websecure"
       traefik.http.routers.books.rule: "Host(`books.$DOMAINNAME`)"
@@ -948,6 +963,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.dockhand.entrypoints: "websecure"
       traefik.http.routers.dockhand.rule: "Host(`dockhand.$DOMAINNAME`)"
@@ -989,6 +1005,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers
       traefik.http.routers.notifiarr.entrypoints: "websecure"
       traefik.http.routers.notifiarr.rule: "Host(`notifiarr.$DOMAINNAME`)"
@@ -1026,6 +1043,7 @@ services:
     logging: *logging
     labels:
       <<: *pullio
+      traefik.enable: "true"
       # HTTP Routers (web vault — stays behind OAuth + frame-ancestors: none)
       traefik.http.routers.vaultwarden.entrypoints: "websecure"
       traefik.http.routers.vaultwarden.rule: "Host(`vaultwarden.$DOMAINNAME`)"
