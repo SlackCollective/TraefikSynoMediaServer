@@ -1020,9 +1020,9 @@ services:
     volumes:
       - $APPDIR/vaultwarden:/data
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
       - TZ=$TZ
+      - DOMAIN=https://vaultwarden.${DOMAINNAME}
+      - SIGNUPS_ALLOWED=false
     logging: *logging
     labels:
       <<: *pullio
