@@ -718,7 +718,7 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     group_add:
-      - "${PLEX_VIDEO_GID}"  # videodriver group on Synology (set in .env)
+      - "${PGID}"  # videodriver group (same as PGID on this host)
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
