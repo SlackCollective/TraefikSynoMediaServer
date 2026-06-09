@@ -718,7 +718,7 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     group_add:
-      - "${PGID}"  # videodriver group (same as PGID on this host)
+      - "${PLEX_VIDEO_GID}"  # videodriver group on Synology (set in .env)
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
@@ -947,7 +947,7 @@ services:
       socket-proxy:
         condition: service_healthy
     group_add:
-      - "${DOCKER_GID}"  # host's Docker GID (set in .env)
+      - "${PGID}"  # host Docker group (same as PGID on this host)
     volumes:
       - $APPDIR/dockhand:/app/data:rw
       - $APPDIR:/compose
