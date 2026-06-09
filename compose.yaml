@@ -147,7 +147,7 @@ services:
 
   # CrowdSec - crowdsourced blocking of bad actors
   crowdsec:
-    image: crowdsecurity/crowdsec
+    image: crowdsecurity/crowdsec:v1.7.8
     container_name: crowdsec
     deploy:
       resources:
@@ -512,7 +512,7 @@ services:
 
   # qbit_manage - torrent client management
   qbit_manage:
-    image: bobokun/qbit_manage
+    image: bobokun/qbit_manage:v4.8.1
     container_name: qbitmanage
     deploy:
       resources:
