@@ -27,3 +27,20 @@ http:
           - "X-Forwarded-User"
           - "X-Forwarded-For"
           - "X-Forwarded-Displayname"
+
+    # Security headers (HSTS + sane browser hardening)
+    secure-headers:
+      headers:
+        # --- HSTS: force HTTPS for the whole domain ---
+        stsSeconds: 31536000            # 1 year
+        stsIncludeSubdomains: true
+        # stsPreload: true              # only enable once you're sure — preload is hard to undo
+        # forceSTSHeader: true
+        # --- generic hardening ---
+        contentTypeNosniff: true        # X-Content-Type-Options: nosniff
+        browserXssFilter: true          # X-XSS-Protection: 1; mode=block
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow, noarchive"   # keep your services out of search engines
+        # --- framing: DELIBERATELY OMITTED, see note below ---
+        # frameDeny: true               # would break Organizr's iframe tabs
