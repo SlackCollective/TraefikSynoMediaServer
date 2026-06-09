@@ -1,0 +1,26 @@
+http:
+  middlewares:
+    # Chain: Rate limiting, auth, generic Traefik headers with CORS
+    chain-auth:
+      chain:
+        middlewares:
+          - "basic-ratelimit"
+          - "auth"
+          - "compress"
+          - "crowdsec@docker"
+
+    # Chain: Rate limiting, generic Traefik headers with CORS
+    chain-noauth:
+      chain:
+        middlewares:
+          - "basic-ratelimit"
+          - "compress"
+          - "crowdsec@docker"
+
+    # API chain (different rate limits, no browser headers)
+    chain-api:
+      chain:
+        middlewares:
+          - "api-ratelimit"
+          - "compress"
+          - "crowdsec@docker"

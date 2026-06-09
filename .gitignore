@@ -1,0 +1,5 @@
+# Local secrets / environment — never commit real values
+.env
+
+# macOS
+.DS_Store
