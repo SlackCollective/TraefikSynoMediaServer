@@ -17,11 +17,9 @@ x-pullio: &pullio
 ########################### NETWORKS
 networks:
   mediaserver:
-    driver: bridge
     name: mediaserver
     external: true
   socket-proxy:
-    driver: bridge
     name: socket-proxy
     external: true
 
@@ -720,7 +718,7 @@ services:
     devices: # optional (used if Syno has Intel CPU, for HW transcoding)
       - /dev/dri:/dev/dri
     group_add:
-      - "937"  # videodriver group on Synology
+      - "${PLEX_VIDEO_GID}"  # videodriver group on Synology (set in .env)
     volumes:
       - $APPDIR/plex:/config:rw
       - $DATADIR/media:/data/media:rw
@@ -949,7 +947,7 @@ services:
       socket-proxy:
         condition: service_healthy
     group_add:
-      - "65536"  # Use host's Docker GID
+      - "${DOCKER_GID}"  # host's Docker GID (set in .env)
     volumes:
       - $APPDIR/dockhand:/app/data:rw
       - $APPDIR:/compose
