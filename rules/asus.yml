@@ -6,6 +6,8 @@ http:
         - websecure
       rule: 'Host(`asus.brunswickmedia.co.za`)'
       service: asus
+      middlewares:
+        - chain-auth@file
         
   ## SERVICES ##
   services:
@@ -15,8 +17,3 @@ http:
         servers:
           - url: https://192.168.1.1:8443
         passHostHeader: true
-
-  # allow self-signed certificates for proxied web services
-  serversTransports:
-    insecureTransport:
-      insecureSkipVerify: true
