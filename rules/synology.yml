@@ -6,6 +6,8 @@ http:
         - websecure
       rule: 'Host(`synology.brunswickmedia.co.za`)'
       service: synology
+      middlewares:
+        - chain-auth@file
 
   ## SERVICES ##
   services:
@@ -15,8 +17,3 @@ http:
         servers:
           - url: https://172.18.0.1:2053
         passHostHeader: true
-
-  # allow self-signed certificates for proxied web services
-  serversTransports:
-    insecureTransport:
-      insecureSkipVerify: true
