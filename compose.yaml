@@ -45,7 +45,7 @@ services:
       mediaserver:
       socket-proxy:
     depends_on:
-      socket-proxy:
+      socket-proxy-ro:
         condition: service_healthy
     ports:
       - 89:80
@@ -61,7 +61,7 @@ services:
       # Providers, Entrypoints
       - --providers.docker=true
       # - --providers.docker.endpoint=unix:///var/run/docker.sock # Disable for Socket Proxy. Enable otherwise.
-      - --providers.docker.endpoint=tcp://socket-proxy:2375 # Enable for Socket Proxy. Disable otherwise.
+      - --providers.docker.endpoint=tcp://socket-proxy-ro:2375 # read-only proxy
       - --providers.docker.exposedByDefault=false
       - --providers.docker.network=mediaserver
       - --providers.file.directory=/rules # Load dynamic configuration from one or more .toml or .yml files in a directory
@@ -188,10 +188,10 @@ services:
       <<: *pullio
       traefik.enable: "false"
 
-  # Socket-Proxy - Proxy for docker.sock to avoid direct exposure
-  socket-proxy:
+  # Socket-Proxy (read-write) - for dockhand: full container lifecycle control
+  socket-proxy-rw:
     image: lscr.io/linuxserver/socket-proxy:latest
-    container_name: socket-proxy
+    container_name: socket-proxy-rw
     deploy:
       resources:
         limits:
@@ -207,7 +207,7 @@ services:
     read_only: true
     networks:
       socket-proxy:
-    # ports:  # disabled — Traefik & dockhand reach it via docker net (socket-proxy:2375), not the host
+    # ports:  # disabled — dockhand reaches it via docker net (socket-proxy-rw:2375), not the host
     #   - 127.0.0.1:2375:2375
     tmpfs:
       - /run
@@ -246,6 +246,60 @@ services:
       - TZ=$TZ #optional
       - VERSION=1 #optional
       - VOLUMES=1 #optional
+    logging: *logging
+    labels:
+      <<: *pullio
+
+  # Socket-Proxy (read-only) - for Traefik: read APIs only, no POST / no container lifecycle
+  socket-proxy-ro:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: socket-proxy-ro
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    restart: unless-stopped
+    healthcheck:
+      test: wget --spider http://localhost:2375/version || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    security_opt: *security_opt
+    read_only: true
+    networks:
+      socket-proxy:
+    # ports:  # not published — Traefik reaches it via docker net as socket-proxy-ro:2375
+    tmpfs:
+      - /run
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # --- read surface Traefik's docker provider needs ---
+      - CONTAINERS=1 #optional
+      - NETWORKS=1 #optional
+      - EVENTS=1 #optional
+      - PING=1 #optional
+      - INFO=1 #optional
+      - VERSION=1 #optional
+      # --- writes & everything else denied ---
+      - POST=0 #optional
+      - ALLOW_START=0 #optional
+      - ALLOW_STOP=0 #optional
+      - ALLOW_RESTARTS=0 #optional
+      - EXEC=0 #optional
+      - IMAGES=0 #optional
+      - LOGS=0 #optional
+      - VOLUMES=0 #optional
+      - SYSTEM=0 #optional
+      - AUTH=0 #optional
+      - SECRETS=0 #optional
+      - SERVICES=0 #optional
+      - SWARM=0 #optional
+      - TASKS=0 #optional
+      - DISABLE_IPV6=1 #optional
+      - LOG_LEVEL=err #optional
+      - TZ=$TZ #optional
     logging: *logging
     labels:
       <<: *pullio
@@ -944,7 +998,7 @@ services:
     # ports:  # disabled — reachable via Traefik; raw host port not needed
     #   - 3000:3000
     depends_on:
-      socket-proxy:
+      socket-proxy-rw:
         condition: service_healthy
     group_add:
       - "${PGID}"  # host Docker group (same as PGID on this host)
@@ -955,7 +1009,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOCKER_HOST=tcp://socket-proxy:2375
+      - DOCKER_HOST=tcp://socket-proxy-rw:2375
       - HOST_DATA_DIR=$APPDIR/dockhand
       - SKIP_DF_COLLECTION=true
     logging: *logging
