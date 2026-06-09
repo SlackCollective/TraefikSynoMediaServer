@@ -85,11 +85,8 @@ services:
       - --accesslog.format=json
       - --accesslog.bufferingsize=50
       - --accesslog.fields.names.ClientIP=keep
-      - --accesslog.fields.names.RequestHost=keep                                                                                                             
+      - --accesslog.fields.names.RequestHost=keep
       - --accesslog.fields.names.RequestPath=keep
-      # - --accesslog.filters.statuscodes=300-302,400-599
-      # - --accesslog.filters.retryattempts=false
-      # - --accesslog.filters.minduration=5s
       # - --metrics.prometheus=true
       # TLS
       - --entrypoints.websecure.http.tls=true
@@ -126,7 +123,7 @@ services:
       traefik.http.middlewares.crowdsec.plugin.bouncer.enabled: "true"
       traefik.http.middlewares.crowdsec.plugin.bouncer.logLevel: "ERROR"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecMode: "stream"
-      traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecEnabled: "false"
+      traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecEnabled: "true"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecHost: "crowdsec:7422"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecFailureBlock: "false"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecAppsecUnreachableBlock: "false"
@@ -160,8 +157,6 @@ services:
       retries: 3
       start_period: 30s
     security_opt: *security_opt
-    # depends_on:
-      # - traefik
     networks:
       mediaserver:
     ports:
@@ -169,9 +164,9 @@ services:
     expose:
       - 8080 # http api for bouncers
       - 6060 # metrics endpoint for prometheus
-      # - 7422 # appsec waf endpoint
+      - 7422 # appsec waf endpoint
     environment:
-      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
       - GID=$PGID
       - BOUNCER_KEY_TRAEFIK=$CROWDSEC
     logging: *logging
@@ -179,6 +174,7 @@ services:
       # crowdsec container data
       - $APPDIR/crowdsec/data:/var/lib/crowdsec/data
       - $APPDIR/crowdsec/etc:/etc/crowdsec
+      - $APPDIR/crowdsec/etc/appsec.yaml:/etc/crowdsec/acquis.d/appsec.yaml
       # Synology CA cert to fix TLS verification against version.crowdsec.net
       - /usr/syno/etc/certificate/system/default/syno-ca-cert.pem:/usr/local/share/ca-certificates/synology.crt:ro
       # log bind mounts into crowdsec
