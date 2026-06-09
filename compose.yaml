@@ -209,8 +209,8 @@ services:
     read_only: true
     networks:
       socket-proxy:
-    ports:
-      - 127.0.0.1:2375:2375
+    # ports:  # disabled — Traefik & dockhand reach it via docker net (socket-proxy:2375), not the host
+    #   - 127.0.0.1:2375:2375
     tmpfs:
       - /run
     volumes:
