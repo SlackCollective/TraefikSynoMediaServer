@@ -271,8 +271,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 4181:4181
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 4181:4181
     volumes:
       - $APPDIR/auth:/etc/traefik-forward-auth
     logging: *logging
@@ -305,9 +305,9 @@ services:
       - net.ipv6.conf.all.disable_ipv6=1
     networks:
       mediaserver:
-    ports:
-      - 8000:8000/tcp # gluetun control server
-      - 9997:9997 # qBit WebUI
+    # ports:  # disabled — qBit WebUI reachable via Traefik (gluetun:9997 over docker net)
+    #   - 8000:8000/tcp # gluetun control server
+    #   - 9997:9997 # qBit WebUI
     devices:
       - /dev/net/tun:/dev/net/tun
     volumes:
@@ -406,8 +406,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 9696:9696
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 9696:9696
     volumes:
       - $APPDIR/prowlarr:/config:rw
       - $DATADIR/torrents:/data/torrents:rw
@@ -616,8 +616,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 7878:7878
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 7878:7878
     depends_on:
       prowlarr:
         condition: service_started
@@ -665,8 +665,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 8989:8989
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 8989:8989
     depends_on:
       prowlarr:
         condition: service_started
@@ -813,8 +813,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 5055:5055
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 5055:5055
     depends_on:
       sonarr:
         condition: service_healthy
@@ -865,8 +865,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 6246:6246
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 6246:6246
     depends_on:
       plex:
         condition: service_healthy
@@ -943,8 +943,8 @@ services:
     networks:
       mediaserver:
       socket-proxy:
-    ports:
-      - 3000:3000
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 3000:3000
     depends_on:
       socket-proxy:
         condition: service_healthy
@@ -992,8 +992,8 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-    ports:
-      - 5454:5454
+    # ports:  # disabled — reachable via Traefik; raw host port not needed
+    #   - 5454:5454
     volumes:
       - $APPDIR/notifiarr:/config
       - /var/run/utmp:/var/run/utmp:ro
