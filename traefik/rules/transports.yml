@@ -1,0 +1,6 @@
+http:
+  # Shared serversTransport: allow self-signed certs on internal proxied backends
+  # (referenced by asus.yml, synology.yml, etc. via loadBalancer.serversTransport)
+  serversTransports:
+    insecureTransport:
+      insecureSkipVerify: true
