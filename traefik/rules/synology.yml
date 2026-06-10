@@ -1,0 +1,19 @@
+http:
+  ## EXTERNAL ROUTING - use if you want to proxy something manually ##
+  routers:
+    synology:
+      entryPoints:
+        - websecure
+      rule: 'Host(`synology.brunswickmedia.co.za`)'
+      service: synology
+      middlewares:
+        - chain-auth@file
+
+  ## SERVICES ##
+  services:
+    synology:
+      loadBalancer:
+        serversTransport: insecureTransport
+        servers:
+          - url: https://172.18.0.1:2053
+        passHostHeader: true

@@ -1,0 +1,46 @@
+http:
+  middlewares:
+
+    # Basic rate limiting
+    basic-ratelimit:
+      rateLimit:
+        average: 400          # 400 requests per period
+        burst: 300             # Allow burst of 300 requests
+        period: 1m            # Per minute (default)
+
+    # Stricter rate limiting for API endpoints
+    api-ratelimit:
+      rateLimit:
+        average: 350
+        burst: 250
+        period: 1m
+
+    compress:
+      compress: {}
+
+    auth:
+      forwardAuth:
+        address: "http://auth:4181/portals/main"
+        trustForwardHeader: true
+        maxResponseBodySize: 12288
+        authResponseHeaders:
+          - "X-Forwarded-User"
+          - "X-Forwarded-For"
+          - "X-Forwarded-Displayname"
+
+    # Security headers (HSTS + sane browser hardening)
+    secure-headers:
+      headers:
+        # --- HSTS: force HTTPS for the whole domain ---
+        stsSeconds: 31536000            # 1 year
+        stsIncludeSubdomains: true
+        # stsPreload: true              # only enable once you're sure — preload is hard to undo
+        # forceSTSHeader: true
+        # --- generic hardening ---
+        contentTypeNosniff: true        # X-Content-Type-Options: nosniff
+        browserXssFilter: true          # X-XSS-Protection: 1; mode=block
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow, noarchive"   # keep your services out of search engines
+        # --- framing: DELIBERATELY OMITTED, see note below ---
+        # frameDeny: true               # would break Organizr's iframe tabs
