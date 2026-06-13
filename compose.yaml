@@ -19,8 +19,11 @@ networks:
   mediaserver:
     name: mediaserver
     external: true
-  socket-proxy:
-    name: socket-proxy
+  socket-proxy-ro:
+    name: socket-proxy-ro
+    external: true
+  socket-proxy-rw:
+    name: socket-proxy-rw
     external: true
 
 services:
@@ -43,7 +46,7 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-      socket-proxy:
+      socket-proxy-ro:
     depends_on:
       socket-proxy-ro:
         condition: service_healthy
@@ -113,7 +116,8 @@ services:
       - GOMAXPROCS=2
       - TZ=$TZ
       - CF_API_EMAIL=$CF_EMAIL
-      - CF_API_KEY=$CF_API_KEY
+      # - CF_API_KEY=$CF_API_KEY
+      - CF_DNS_API_TOKEN=$CF_DNS_API_TOKEN
       - DOMAINNAME # Passing this to use the variable in rules.
     logging: *logging
     labels:
@@ -130,9 +134,8 @@ services:
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiKey: "$CROWDSEC"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiHost: "crowdsec:8080"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiScheme: "http"
-      traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiTLSInsecureVerify: "true"
-      traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedHeadersTrustedIPs: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-      traefik.http.middlewares.crowdsec.plugin.bouncer.clientTrustedIPs: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedHeadersTrustedIPs: "$TRUSTED_IPS"
+      traefik.http.middlewares.crowdsec.plugin.bouncer.clientTrustedIPs: "$TRUSTED_IPS"
       # HTTP Routers - Dashboard
       traefik.http.routers.dashboard.entrypoints: "websecure"
       traefik.http.routers.dashboard.rule: "Host(`traefik.$DOMAINNAME`)"
@@ -148,7 +151,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "cscli", "lapi", "status"]
@@ -202,9 +205,7 @@ services:
     security_opt: *security_opt
     read_only: true
     networks:
-      socket-proxy:
-    # ports:  # disabled — dockhand reaches it via docker net (socket-proxy-rw:2375), not the host
-    #   - 127.0.0.1:2375:2375
+      socket-proxy-rw:
     tmpfs:
       - /run
     volumes:
@@ -264,8 +265,7 @@ services:
     security_opt: *security_opt
     read_only: true
     networks:
-      socket-proxy:
-    # ports:  # not published — Traefik reaches it via docker net as socket-proxy-ro:2375
+      socket-proxy-ro:
     tmpfs:
       - /run
     volumes:
@@ -990,9 +990,7 @@ services:
     security_opt: *security_opt
     networks:
       mediaserver:
-      socket-proxy:
-    # ports:  # disabled — reachable via Traefik; raw host port not needed
-    #   - 3000:3000
+      socket-proxy-rw:
     depends_on:
       socket-proxy-rw:
         condition: service_healthy
