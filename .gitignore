@@ -1,5 +1,39 @@
 # Local secrets / environment — never commit real values
 .env
 
-# macOS
+# macOS / Synology metadata
 .DS_Store
+@eaDir/
+
+# Claude Code
+.claude/
+
+# Host socket symlink and env-specific files
+docker.sock
+puid
+pgid
+
+# App config directories — keep these off git
+auth/
+autobrr/
+books/
+crowdsec/
+dockhand/
+gluetun/
+maintainerr/
+notifiarr/
+organizr/
+plex/
+prowlarr/
+qbitmanage/
+qbittorrent/
+radarr/
+sabnzbd/
+seerr/
+sonarr/
+tautulli/
+vaultwarden/
+
+# Traefik runtime data — only traefik/rules/ is tracked
+traefik/logs/
+traefik/@eaDir/
