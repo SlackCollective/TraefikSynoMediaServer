@@ -1,0 +1,5 @@
+[user]
+	name = SlackCollective
+	email = jacques.rousseau@synapses.co.za
+[safe]
+	directory = /volume1/docker/apps
