@@ -135,7 +135,7 @@ services:
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiHost: "crowdsec:8080"
       traefik.http.middlewares.crowdsec.plugin.bouncer.crowdsecLapiScheme: "http"
       traefik.http.middlewares.crowdsec.plugin.bouncer.forwardedHeadersTrustedIPs: "$TRUSTED_IPS"
-      traefik.http.middlewares.crowdsec.plugin.bouncer.clientTrustedIPs: "$TRUSTED_IPS"
+      traefik.http.middlewares.crowdsec.plugin.bouncer.clientTrustedIPs: "$LOCAL_IPS"
       # HTTP Routers - Dashboard
       traefik.http.routers.dashboard.entrypoints: "websecure"
       traefik.http.routers.dashboard.rule: "Host(`traefik.$DOMAINNAME`)"
