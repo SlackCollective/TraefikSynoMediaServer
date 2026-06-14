@@ -25,7 +25,6 @@ http:
         maxResponseBodySize: 12288
         authResponseHeaders:
           - "X-Forwarded-User"
-          - "X-Forwarded-For"
           - "X-Forwarded-Displayname"
 
     # Security headers (HSTS + sane browser hardening)
