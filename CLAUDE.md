@@ -42,13 +42,13 @@ Two Docker bridge networks are used:
 - Dashboard accessible at `traefik.$DOMAINNAME` (localhost:8080 for API)
 
 ### Authentication
-- **`auth`** container: `traefik-forward-auth` (italypaleale fork v4) handles OAuth SSO
-- Four middleware chains defined in `traefik/rules/middlewares-chains.yml`:
-  - **`chain-auth@file`** — generic-headers → basic-ratelimit → auth → compress (most services)
-  - **`chain-noauth@file`** — generic-headers → basic-ratelimit → compress (auth container itself)
-  - **`chain-api@file`** — api-ratelimit → compress (API bypass routes; no browser security headers)
-  - **`chain-media@file`** — media-headers → basic-ratelimit → compress (Plex; no auth, Plex-tuned CSP)
-- Two header middleware sets in `traefik/rules/middlewares.yml`: `generic-headers` (strict CSP) and `media-headers` (permissive CSP for Plex streaming)
+- **`auth`** container: `traefik-forward-auth` (italypaleale fork v4) handles OAuth SSO; forwardAuth address `http://auth:4181/portals/main`
+- Three middleware chains defined in `traefik/rules/middlewares-chains.yml`:
+  - **`chain-auth@file`** — crowdsec@docker → basic-ratelimit → secure-headers → auth → compress (most services)
+  - **`chain-noauth@file`** — crowdsec@docker → basic-ratelimit → secure-headers → compress (the auth container plus services with their own auth: plex, tautulli, seerr, qbittorrent)
+  - **`chain-api@file`** — crowdsec@docker → api-ratelimit → compress (API bypass routes; no browser security headers)
+- One header middleware set in `traefik/rules/middlewares.yml`: `secure-headers` (HSTS + `contentTypeNosniff` + `referrerPolicy` + `X-Robots-Tag`). No CSP is defined, and `frameDeny`/`X-Frame-Options` is deliberately omitted so Organizr's iframe tabs keep working.
+- `auth`'s `authResponseHeaders` carries only identity headers the auth server returns (`X-Forwarded-User`, `X-Forwarded-Displayname`); **do not** add `X-Forwarded-For` here — forwardAuth strips any listed header the auth response omits, which would blank the real client IP seen by backends and CrowdSec.
 
 ### API Key Bypass Pattern
 Several *arr services (Prowlarr, Sonarr, Radarr, SABnzbd, Tautulli) expose a second router (`<service>-bypass`) with higher priority (`100`) that matches API key headers (`X-Api-Key`) or query params (`apikey`), routing to `chain-api@file`. qBittorrent's bypass instead matches `PathPrefix(/api/v2)`. This allows external apps (e.g., NZB360) to authenticate via API key instead of OAuth.
@@ -74,8 +74,10 @@ All services rely on variables set in an `.env` file (not in this repo). Key var
 - `$*_API_KEY` — per-service API keys used in bypass router rules
 
 ### Static Routing (traefik/rules/)
-- `middlewares.yml` — defines individual middlewares (rate-limit, secure-headers, auth, https-redirect, compress)
-- `middlewares-chains.yml` — defines the two chain middlewares
+- `middlewares.yml` — defines individual middlewares (`basic-ratelimit`, `api-ratelimit`, `secure-headers`, `auth`, `compress`)
+- `middlewares-chains.yml` — defines the three chain middlewares (`chain-auth`, `chain-noauth`, `chain-api`)
+- `tls.yml` — TLS options (`minVersion: VersionTLS12`)
+- `transports.yml` — serversTransport with `insecureSkipVerify` for self-signed upstreams
 - `synology.yml` — proxies Synology DSM (HTTPS, self-signed cert bypass via `insecureTransport`)
 - `asus.yml` — proxies Asus router admin UI (same pattern)
 
