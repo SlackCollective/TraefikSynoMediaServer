@@ -1,11 +1,12 @@
 #!/bin/sh
-# relink-tools.sh — re-establish the /volume1-based Node/Claude toolchain after a reboot
-# or DSM reset. Register as a DSM Task Scheduler "Triggered Task" (Event: Boot-up, User: root).
-# Idempotent: safe to run any time.
+# relink-tools.sh — re-establish the /volume1-based Node toolchain and per-user Claude links
+# after a reboot or DSM reset. Register as a DSM Task Scheduler "Triggered Task"
+# (Event: Boot-up, User: root). Idempotent: safe to run any time.
 #
 # Why this exists: DSM periodically resets /root (and can reset user homes and /usr/local),
-# wiping the symlinks and profile edits that make node/npm/claude resolve. The actual data
-# lives on /volume1 (never wiped); this script re-creates the thin links that point at it.
+# wiping the symlinks and profile edits that make node/npm resolve and that point each user's
+# native Claude install at /volume1. The actual data lives on /volume1 (never wiped); this
+# script re-creates the thin links that point at it.
 
 set -eu
 
