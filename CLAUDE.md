@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Docker Compose–based home media server stack running on a Synology NAS. All services are defined in a single `compose.yaml` and are exposed via Traefik reverse proxy with optional OAuth authentication.
 
+Host-level NAS tooling that is **not** part of the compose stack (the relocated Node/Claude Code toolchain on `/volume1`, shared shell aliases, and the boot task that re-establishes them after DSM resets) lives in `host-setup/` — see `host-setup/README.md`.
+
 ## Common Commands
 
 ```bash

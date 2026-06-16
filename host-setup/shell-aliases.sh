@@ -3,13 +3,25 @@
 # Keep everything POSIX so it works in BOTH ash (Synology default) and bash.
 # Deploy to: /volume1/dev/shell-aliases.sh   (world-readable: chmod a+r)
 
+# --- files / navigation ---
 alias ll='ls -lah'
 alias la='ls -A'
 alias l='ls -CF'
+alias cdkr='cd /volume1/docker/apps'
 
-# Docker / compose
-alias dc='docker compose'
-alias dps='docker ps --format "table {{.Names}}\t{{.Status}}"'
-alias dlogs='docker logs -f'
+# --- docker / compose ---
+alias list='docker ps -a'
+alias up='sudo docker compose up -d'
+alias down='sudo docker compose down -v'      # NOTE: -v also removes anonymous/named volumes
+alias pull='sudo docker compose pull'
+alias inspect='sudo docker inspect'
+alias start='sudo docker start'
+alias stop='sudo docker stop'
+alias prune='sudo docker system prune'
 
-# add your own below this line ----------------------------------------------
+# logs <container> [args...] — a function, because an alias cannot consume "$@"
+logs() { docker logs -tf --tail=50 "$@"; }
+
+# --- Synology permission fixes (see ../CLAUDE.md and ../README.md) ---
+alias users='sudo chown -R docker:docker /volume1/data /volume1/docker/apps'
+alias perms='sudo chmod -R a=,a+rX,u+w,g+w /volume1/data /volume1/docker/apps'

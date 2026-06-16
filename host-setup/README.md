@@ -33,7 +33,15 @@ default PATH), so **no `.profile` / `NVM_DIR` is required** to run node/npm/clau
 
 ## Deploy
 
-Copy both scripts to `/volume1/dev/` and set permissions (as root on the NAS):
+From this directory on the NAS (as root), run the installer — it copies the scripts to
+`/volume1/dev/`, sets permissions, and runs the relinker once:
+
+```sh
+sudo sh install.sh
+```
+
+<details>
+<summary>…or do it by hand</summary>
 
 ```sh
 cp shell-aliases.sh /volume1/dev/shell-aliases.sh
@@ -43,8 +51,10 @@ chmod a+r  /volume1/dev/shell-aliases.sh
 chmod +x   /volume1/dev/relink-tools.sh
 /volume1/dev/relink-tools.sh         # run once now
 ```
+</details>
 
-Register the boot task so it re-runs after every reboot / reset:
+Then register the boot task so it re-runs after every reboot / reset (the installer also
+prints these steps):
 **Control Panel → Task Scheduler → Create → Triggered Task → User-defined script**
 - Event: **Boot-up**
 - User: **root**

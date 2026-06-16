@@ -44,3 +44,9 @@ Plex (32400 is default); Https: 443 (external) > 449 (internal). Also 80 (extern
 * dockhand (like Portainer, but my preference)
 
 Requires docker-compose.yaml and .env file in the same directory, container folders beneath.
+
+# Host setup (non-Traefik)
+NAS host tooling that isn't part of the compose stack — the relocated Node/Claude Code
+toolchain on `/volume1`, shared shell aliases (including `users`/`perms` for the commands
+above), and a boot task that makes it self-healing across DSM resets — lives in
+[`host-setup/`](host-setup/). See its README to deploy (`sudo sh host-setup/install.sh`).
