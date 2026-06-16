@@ -1,0 +1,93 @@
+# host-setup
+
+Host-level setup for the Synology NAS that is **not** part of the Traefik media stack:
+a relocated Node/Claude Code toolchain on `/volume1`, shared shell aliases, and a boot
+task that makes the whole thing self-healing across reboots and DSM resets.
+
+## Why
+
+The DSM system partition (`/dev/md0`, mounted at `/`) is a fixed ~2.3 GB and fills up
+(blocking DSM updates). Node + Claude Code's binaries and caches were living under `/root`
+(~640 MB). This setup moves them to `/volume1` (TBs free) and exposes them so both **root**
+and **JacquesRousseau** can run them.
+
+DSM also periodically resets `/root` (and can reset user homes / `/usr/local`), wiping
+symlinks and `.profile` edits. The data on `/volume1` survives; `relink-tools.sh` re-creates
+the thin links that point at it.
+
+## Layout on the NAS
+
+```
+/volume1/dev/
+├── nvm/                      # relocated nvm + Node (NVM_DIR); `current` -> active version
+│   └── current/bin/{node,npm,npx,claude}
+├── claude/
+│   ├── root/{share,config}           # root's Claude data (native-binary cache + config)
+│   └── JacquesRousseau/{share,config}# per-user; separate credentials/state
+├── shell-aliases.sh          # this repo's copy, deployed here (chmod a+r)
+└── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
+```
+
+Binaries are exposed via `/usr/local/bin` symlinks (that dir is already on every shell's
+default PATH), so **no `.profile` / `NVM_DIR` is required** to run node/npm/claude.
+
+## Deploy
+
+Copy both scripts to `/volume1/dev/` and set permissions (as root on the NAS):
+
+```sh
+cp shell-aliases.sh /volume1/dev/shell-aliases.sh
+cp relink-tools.sh  /volume1/dev/relink-tools.sh
+chmod a+rx /volume1/dev
+chmod a+r  /volume1/dev/shell-aliases.sh
+chmod +x   /volume1/dev/relink-tools.sh
+/volume1/dev/relink-tools.sh         # run once now
+```
+
+Register the boot task so it re-runs after every reboot / reset:
+**Control Panel → Task Scheduler → Create → Triggered Task → User-defined script**
+- Event: **Boot-up**
+- User: **root**
+- Command: `sh /volume1/dev/relink-tools.sh`
+
+## Rebuilding the toolchain from scratch
+
+If `/volume1/dev/nvm` is ever empty (fresh NAS / lost volume), reinstall Node + Claude
+as root, then run `relink-tools.sh`:
+
+```sh
+# Node via nvm (nvm needs bash, not ash):
+bash -lc '
+  export NVM_DIR=/volume1/dev/nvm
+  mkdir -p "$NVM_DIR"
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  . "$NVM_DIR/nvm.sh"
+  nvm install --lts && nvm alias default "lts/*"
+'
+ln -sfn "$(ls -d /volume1/dev/nvm/versions/node/v* | sort -V | tail -1)" /volume1/dev/nvm/current
+chmod -R a+rX /volume1/dev/nvm
+
+# Claude Code (global, into the shared node):
+export PATH="/volume1/dev/nvm/current/bin:$PATH"
+npm install -g @anthropic-ai/claude-code
+
+# Wire up the links + aliases:
+/volume1/dev/relink-tools.sh
+```
+
+Each user's first `claude` run downloads *their own* native binary into
+`/volume1/dev/claude/<user>/share` and prompts login. To pre-seed JacquesRousseau's dir
+as root: `mkdir -p /volume1/dev/claude/JacquesRousseau/{share,config} && chown -R JacquesRousseau:users /volume1/dev/claude/JacquesRousseau`.
+
+## Notes / gotchas learned the hard way
+
+- **`/usr/local/bin` is on the default PATH** for every user and shell — symlinking the
+  binaries there avoids all `.profile`/`NVM_DIR` fragility. This is the primary mechanism.
+- **ash vs bash:** the Synology login shell is `ash`, which reads `~/.profile` (never
+  `~/.bashrc`). bash interactive shells read `~/.bashrc`. Aliases are sourced from both.
+  nvm only supports bash — it's needed for *installing* Node, not for *running* it.
+- **Claude data is per-user, not shared** — `~/.claude` holds credentials/state, and the
+  auto-updater writing as one user would break the other. Two ~221 MB caches on a TB-scale
+  volume is a non-issue.
+- **`authResponseHeaders` / X-Forwarded-For** and other Traefik specifics live in the parent
+  repo, not here.
