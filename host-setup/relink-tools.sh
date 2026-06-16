@@ -14,10 +14,13 @@ CLAUDE_BASE=/volume1/dev/claude
 ALIASES=/volume1/dev/shell-aliases.sh
 
 # 1. Shared tool binaries onto /usr/local/bin (already on every shell's default PATH,
-#    so no .profile/NVM_DIR is required for node/npm/claude to resolve).
-for b in node npm npx claude; do
+#    so no .profile/NVM_DIR is required for node/npm to resolve).
+#    NOTE: claude is intentionally NOT shared here — it is a per-user *native* install
+#    (~/.local/bin/claude). Remove any stale shared symlink so the native one wins on PATH.
+for b in node npm npx; do
     ln -sfn "$NVM_CURRENT/bin/$b" "/usr/local/bin/$b"
 done
+rm -f /usr/local/bin/claude
 
 # 2. Per-user Claude data symlinks (config + native-binary cache live on /volume1).
 #    $1 = account name, $2 = home directory
