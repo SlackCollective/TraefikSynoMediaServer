@@ -33,9 +33,10 @@ docker compose config
 ## Architecture
 
 ### Networks
-Two Docker bridge networks are used:
+Three Docker bridge networks are used:
 - **`mediaserver`** — all application containers communicate on this network
-- **`socket-proxy`** — isolates Docker socket access; only Traefik, dockhand, and restart-qbittorrent connect here via `socket-proxy` container (port 2375), never directly to `/var/run/docker.sock`
+- **`socket-proxy-ro`** — read-only Docker socket access for Traefik; POST and all write operations denied
+- **`socket-proxy-rw`** — read-write Docker socket access for dockhand; full container lifecycle control (start/stop/restart)
 
 ### Reverse Proxy (Traefik v3)
 - Listens on ports `89` (HTTP) and `449` (HTTPS), externally mapped
@@ -59,7 +60,7 @@ Several *arr services (Prowlarr, Sonarr, Radarr, SABnzbd, Tautulli) expose a sec
 - `gluetun` runs AirVPN via WireGuard
 - `qbittorrent` uses `network_mode: "service:gluetun"` — all its traffic routes through the VPN tunnel
 - qBittorrent's WebUI port (9997) is exposed via gluetun's network namespace; Traefik routes to the gluetun container
-- `restart-qbittorrent` monitors gluetun health and restarts qBittorrent if the VPN drops
+- gluetun exposes a health endpoint; qBittorrent's `depends_on` condition ensures it only starts when the VPN is healthy
 
 ### Environment Variables
 All services rely on variables set in an `.env` file (not in this repo). Key variables:
@@ -91,20 +92,20 @@ All containers include `org.hotio.pullio.*` labels for automated image update ch
 | Service | Purpose | Internal Port |
 |---|---|---|
 | traefik | Reverse proxy | 80/443 |
-| socket-proxy | Docker socket proxy | 2375 |
+| socket-proxy-ro | Docker socket proxy (read-only, for Traefik) | 2375 |
+| socket-proxy-rw | Docker socket proxy (read-write, for dockhand) | 2375 |
+| crowdsec | Crowdsourced threat blocking | 8080 |
 | auth | OAuth forward auth | 4181 |
 | gluetun | WireGuard VPN | 8000 (control) |
 | organizr | Dashboard (root domain) | 80 |
 | prowlarr | Indexer aggregator | 9696 |
 | sabnzbd | Usenet downloader | 8080 |
 | qbittorrent | Torrent client (via VPN) | 9997 |
-| restart-qbittorrent | Watchdog: restarts qBittorrent on VPN drop | — |
 | qbitmanage | qBittorrent management | 9996 |
 | autobrr | Torrent RSS automation | 7474 |
 | radarr | Movie management | 7878 |
 | sonarr | TV management | 8989 |
 | plex | Media player | 32400 |
-| tdarr | Video transcoding | 8265 |
 | tautulli | Plex monitoring | 8181 |
 | seerr (overseerr) | Media request portal | 5055 |
 | maintainerr | Stale media cleanup | 6246 |

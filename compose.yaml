@@ -574,7 +574,7 @@ services:
           memory: 128M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9996/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9996/"]
       interval: 30s
       timeout: 5s
       retries: 3
