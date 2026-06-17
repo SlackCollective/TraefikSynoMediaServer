@@ -1,8 +1,9 @@
 # host-setup
 
 Host-level setup for the Synology NAS that is **not** part of the Traefik media stack:
-a relocated Node/Claude Code toolchain on `/volume1`, shared shell aliases, and a boot
-task that makes the whole thing self-healing across reboots and DSM resets.
+a relocated Node/Claude Code toolchain on `/volume1`, shared shell aliases, an iptables
+boot fixup for Docker's published ports, and boot tasks that make the whole thing
+self-healing across reboots and DSM resets.
 
 ## Why
 
@@ -25,7 +26,8 @@ the thin links that point at it.
 │   ├── root/{share,config}           # root's Claude data (native-binary cache + config)
 │   └── JacquesRousseau/{share,config}# per-user; separate credentials/state
 ├── shell-aliases.sh          # this repo's copy, deployed here (chmod a+r)
-└── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
+├── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
+└── iptables.sh               # this repo's copy, deployed here (chmod +x)
 ```
 
 **node/npm/npx** are exposed via `/usr/local/bin` symlinks (that dir is already on every
@@ -52,19 +54,33 @@ sudo sh install.sh
 ```sh
 cp shell-aliases.sh /volume1/dev/shell-aliases.sh
 cp relink-tools.sh  /volume1/dev/relink-tools.sh
+cp iptables.sh      /volume1/dev/iptables.sh
 chmod a+rx /volume1/dev
 chmod a+r  /volume1/dev/shell-aliases.sh
 chmod +x   /volume1/dev/relink-tools.sh
+chmod +x   /volume1/dev/iptables.sh
 /volume1/dev/relink-tools.sh         # run once now
 ```
 </details>
 
-Then register the boot task so it re-runs after every reboot / reset (the installer also
-prints these steps):
-**Control Panel → Task Scheduler → Create → Triggered Task → User-defined script**
-- Event: **Boot-up**
-- User: **root**
-- Command: `sh /volume1/dev/relink-tools.sh`
+Then register the boot tasks so they re-run after every reboot / reset (the installer also
+prints these steps). Both are **Control Panel → Task Scheduler → Create → Triggered Task →
+User-defined script**, Event **Boot-up**, User **root**:
+- `sh /volume1/dev/relink-tools.sh`
+- `sh /volume1/dev/iptables.sh`
+
+### iptables.sh
+
+Waits (up to 2.5 min) for Docker's `DOCKER-USER` chain to appear at boot, then ensures two
+NAT rules exist so locally-originated connections to the NAS's own LAN IP on a published
+Docker port get hairpinned to the container. It's idempotent (checks before adding), so
+re-running it on every boot is safe.
+
+**This does not make `localhost`/`127.0.0.1:<port>` work from the host** — that would also
+need `net.ipv4.conf.*.route_localnet=1`, which is `0` by default on this NAS, so loopback
+traffic destined for the docker bridge gets dropped as a martian packet before it reaches
+the container. Any host-side script that needs to reach a published port (see
+`../scripts/tautulli_metadata.py`) should target the NAS's LAN IP instead of localhost.
 
 ## Rebuilding the toolchain from scratch
 

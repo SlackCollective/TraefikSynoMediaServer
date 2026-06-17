@@ -875,6 +875,7 @@ services:
       - LOG_LEVEL=error
       - TZ=$TZ
       - PORT=5055
+      - TRUST_PROXY=true
     logging: *logging
     labels:
       <<: *pullio

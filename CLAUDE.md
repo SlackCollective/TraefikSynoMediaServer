@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Docker Compose–based home media server stack running on a Synology NAS. All services are defined in a single `compose.yaml` and are exposed via Traefik reverse proxy with optional OAuth authentication.
 
-Host-level NAS tooling that is **not** part of the compose stack (the relocated Node/Claude Code toolchain on `/volume1`, shared shell aliases, and the boot task that re-establishes them after DSM resets) lives in `host-setup/` — see `host-setup/README.md`.
+Host-level NAS tooling that is **not** part of the compose stack lives in `host-setup/` — see `host-setup/README.md`. The Node/Claude Code toolchain is installed at `/volume1/dev/nvm/` (Node via nvm) and `/volume1/dev/claude/` (per-user Claude data), exposed via `/usr/local/bin` symlinks. The npm cache (shared by root and JacquesRousseau) is at `/volume1/dev/nvm/cache`. Both users have separate Claude credentials (`/root/.claude/` and `~/.claude/` for JacquesRousseau). A boot task (`sh /volume1/dev/relink-tools.sh`) re-creates those symlinks after DSM resets.
 
 ## Common Commands
 
@@ -30,7 +30,27 @@ docker compose pull && docker compose up -d
 docker compose config
 ```
 
+The three networks are `external: true` and must be pre-created before first `docker compose up`:
+```bash
+docker network create mediaserver
+docker network create socket-proxy-ro
+docker network create socket-proxy-rw
+```
+
+The `.env` file lives alongside `compose.yaml` in `apps/`.
+
+### Fixing file permissions
+If services can't read/write their config or data directories:
+```bash
+sudo chown -R docker:docker /volume1/data /volume1/docker/apps
+sudo chmod -R a=,a+rX,u+w,g+w /volume1/data /volume1/docker/apps
+```
+The shell aliases `users` and `perms` (from `host-setup/shell-aliases.sh`) wrap these commands.
+
 ## Architecture
+
+### compose.yaml structure
+The file uses YAML extension fields (`x-logging`, `x-security-opt`, `x-pullio`) as shared anchors merged into each service with `<<: *anchor_name`. These define common log rotation, `no-new-privileges`, and Pullio update labels applied across all services.
 
 ### Networks
 Three Docker bridge networks are used:
@@ -109,7 +129,7 @@ All containers include `org.hotio.pullio.*` labels for automated image update ch
 | tautulli | Plex monitoring | 8181 |
 | seerr (overseerr) | Media request portal | 5055 |
 | maintainerr | Stale media cleanup | 6246 |
-| books (calibre-web) | Book library | 8083 |
+| books (calibre-web-automated) | Book library | 8083 |
 | dockhand | Container management UI | 3000 |
 | notifiarr | *arr profile notifications | 5454 |
 | vaultwarden | Password manager | 80 |
