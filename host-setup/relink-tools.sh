@@ -23,8 +23,11 @@ for b in node npm npx; do
 done
 rm -f /usr/local/bin/claude
 
-# 2. Per-user Claude data symlinks (config + native-binary cache live on /volume1).
-#    $1 = account name, $2 = home directory
+# 2. Redirect ROOT's Claude data onto /volume1. root's home (/root) is on the small
+#    system partition, so the native-binary cache must not live there.
+#    IMPORTANT: accounts whose home is already on /volume1 (e.g. /var/services/homes/*)
+#    need NO redirect — their native install lives on /volume1 naturally, and a symlink
+#    here would *shadow* it and make `claude` report its binary "missing or broken".
 link_claude_data() {
     _user=$1
     _home=$2
@@ -34,7 +37,7 @@ link_claude_data() {
     ln -sfn "$CLAUDE_BASE/$_user/config" "$_home/.claude"
 }
 link_claude_data root /root
-link_claude_data JacquesRousseau /var/services/homes/JacquesRousseau
+# NOTE: JacquesRousseau's home is on /volume1, so no redirect — do NOT add it here.
 
 # 3. Re-attach shared aliases to each account's rc files (survives /root + home resets).
 SRC="[ -f $ALIASES ] && . $ALIASES"

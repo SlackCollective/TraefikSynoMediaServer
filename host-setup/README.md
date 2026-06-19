@@ -23,8 +23,8 @@ the thin links that point at it.
 ├── nvm/                      # relocated nvm + Node (NVM_DIR); `current` -> active version
 │   └── current/bin/{node,npm,npx}
 ├── claude/
-│   ├── root/{share,config}           # root's Claude data (native-binary cache + config)
-│   └── JacquesRousseau/{share,config}# per-user; separate credentials/state
+│   └── root/{share,config}           # root's Claude data ONLY (root's home is on md0);
+│                                      # /volume1-home accounts are NOT redirected here
 ├── shell-aliases.sh          # this repo's copy, deployed here (chmod a+r)
 ├── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
 └── iptables.sh               # this repo's copy, deployed here (chmod +x)
@@ -34,10 +34,12 @@ the thin links that point at it.
 shell's default PATH), so **no `.profile` / `NVM_DIR` is required** to run them.
 
 **claude is NOT shared this way.** Claude Code is a per-user **native** install at
-`~/.local/bin/claude` (it self-migrates from npm-global to native and self-updates). The
-`~/.local/share/claude` cache is symlinked to `/volume1/dev/claude/<user>` to keep it off
-the system partition. `relink-tools.sh` removes any stale shared `/usr/local/bin/claude`
-so the native one always wins on PATH.
+`~/.local/bin/claude` (it self-migrates from npm-global to native and self-updates). For
+**root only**, `relink-tools.sh` symlinks `~/.local/share/claude` to `/volume1/dev/claude/root`
+to keep the cache off the `md0` system partition. Accounts whose home is already on `/volume1`
+(e.g. JacquesRousseau) keep their native cache in place — redirecting them shadows the install
+and makes `claude` report "missing or broken". `relink-tools.sh` also removes any stale shared
+`/usr/local/bin/claude` so the native one always wins on PATH.
 
 ## Deploy
 
@@ -107,10 +109,11 @@ export PATH="/volume1/dev/nvm/current/bin:$PATH"
 curl -fsSL https://claude.ai/install.sh | bash      # installs to ~/.local/bin/claude
 ```
 
-Each user's native install lives in `~/.local/bin/claude`; its `~/.local/share/claude`
-cache is redirected to `/volume1/dev/claude/<user>` by `relink-tools.sh`, so nothing heavy
-lands on the system partition. First run prompts login. To pre-seed JacquesRousseau's data
-dir as root: `mkdir -p /volume1/dev/claude/JacquesRousseau/{share,config} && chown -R JacquesRousseau:users /volume1/dev/claude/JacquesRousseau`.
+Each user's native install lives in `~/.local/bin/claude`. For **root**, `relink-tools.sh`
+redirects `~/.local/share/claude` to `/volume1/dev/claude/root` so nothing heavy lands on the
+`md0` system partition. For accounts whose home is on `/volume1` (e.g. JacquesRousseau) the
+native install already lives there — **no redirect** (a symlink would shadow it). First run
+prompts login.
 
 > If you previously had the npm-global package, remove it so the native install wins:
 > `npm uninstall -g @anthropic-ai/claude-code` (then `relink-tools.sh` clears the stale
@@ -126,7 +129,11 @@ dir as root: `mkdir -p /volume1/dev/claude/JacquesRousseau/{share,config} && cho
 - **Claude is per-user native, not a shared npm-global.** Claude Code self-migrates to a
   native install (`~/.local/bin/claude`) and self-updates; a shared npm-global launcher
   fights that (`claude doctor` flags "multiple installations"). Each user gets their own
-  native install; `~/.claude` (credentials/state) and the `~/.local/share/claude` cache are
-  per-user, the latter redirected to `/volume1`. Don't symlink `claude` into `/usr/local/bin`.
+  native install. Don't symlink `claude` into `/usr/local/bin`.
+- **Only redirect Claude data for accounts whose home is on the system partition.** `root`'s
+  home is `/root` (on `md0`), so `relink-tools.sh` symlinks root's `~/.local/share/claude`
+  and `~/.claude` to `/volume1/dev/claude/root`. **User accounts under `/var/services/homes/*`
+  are already on `/volume1`** — do NOT redirect them. A symlink there shadows the real native
+  install and makes `claude` report its binary "missing or broken" (`claude install` repairs).
 - **`authResponseHeaders` / X-Forwarded-For** and other Traefik specifics live in the parent
   repo, not here.
