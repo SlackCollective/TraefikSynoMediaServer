@@ -4,6 +4,7 @@
 # macOS / Synology metadata
 .DS_Store
 @eaDir/
+*.dss
 
 # Claude Code
 .claude/
