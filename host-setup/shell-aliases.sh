@@ -22,6 +22,9 @@ alias prune='sudo docker system prune'
 # logs <container> [args...] — a function, because an alias cannot consume "$@"
 logs() { docker logs -tf --tail=50 "$@"; }
 
+# claude — always start in the compose project dir, regardless of cwd
+claude() { cd /volume1/docker/apps && command claude "$@"; }
+
 # --- Synology permission fixes (see ../CLAUDE.md and ../README.md) ---
 alias users='sudo chown -R docker:docker /volume1/data /volume1/docker/apps'
 alias perms='sudo chmod -R a=,a+rX,u+w,g+w /volume1/data /volume1/docker/apps'
