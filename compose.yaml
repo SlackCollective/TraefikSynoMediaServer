@@ -222,8 +222,8 @@ services:
       - ALLOW_START=1 #optional
       - ALLOW_STOP=1 #optional
       - ALLOW_RESTARTS=1 #optional
-      - ALLOW_PAUSE=0 #optional
-      - ALLOW_UNPAUSE=0 #optional
+      - ALLOW_PAUSE=1 #optional
+      - ALLOW_UNPAUSE=1 #optional
       - AUTH=1 #optional
       - BUILD=0 #optional
       - COMMIT=0 #optional
@@ -232,7 +232,7 @@ services:
       - DISABLE_IPV6=1 #optional
       - DISTRIBUTION=0 #optional
       - EVENTS=1 #optional
-      - EXEC=0 #optional
+      - EXEC=1 #optional
       - IMAGES=1 #optional
       - INFO=1 #optional
       - LOGS=1 #optional
@@ -240,7 +240,7 @@ services:
       - NETWORKS=1 #optional
       - NODES=0 #optional
       - PING=1 #optional
-      - PLUGINS=0 #optional
+      - PLUGINS=1 #optional
       - POST=1 #optional
       - SECRETS=0 #optional
       - SERVICES=0 #optional
