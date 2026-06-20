@@ -3,6 +3,11 @@
 # Keep everything POSIX so it works in BOTH ash (Synology default) and bash.
 # Deploy to: /volume1/dev/shell-aliases.sh   (world-readable: chmod a+r)
 
+# --- PATH: ensure each account's native ~/.local/bin (claude, etc.) resolves ---
+# Idempotent — won't duplicate if already present. Lets root's native claude be found
+# without a separate profile edit (root's home is on the fragile /root partition).
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+
 # --- files / navigation ---
 alias ll='ls -lah'
 alias la='ls -A'
