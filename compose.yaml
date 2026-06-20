@@ -55,6 +55,8 @@ services:
     depends_on:
       socket-proxy-ro:
         condition: service_healthy
+      crowdsec:
+        condition: service_started
     ports:
       - 89:80
       - 449:443
