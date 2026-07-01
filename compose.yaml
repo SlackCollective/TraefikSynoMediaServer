@@ -964,7 +964,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/"]
@@ -978,13 +978,15 @@ services:
     dns: *dns_default
     volumes:
       - $APPDIR/books:/config
-      - $DATADIR/imports:/cwa-book-ingest
-      - $DATADIR/media/books:/calibre-library
       - $APPDIR/books/custom-files:/custom-cont-init.d:ro
+      - $DATADIR/media/books:/calibre-library
+      - $DATADIR/imports:/cwa-book-ingest
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - NETWORK_SHARE_MODE=true
+      - TRUSTED_PROXY_COUNT=3
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
     logging: *logging
     labels:
