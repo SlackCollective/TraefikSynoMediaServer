@@ -986,7 +986,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
       - NETWORK_SHARE_MODE=true
-      - TRUSTED_PROXY_COUNT=3
+      - TRUSTED_PROXY_COUNT=1
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
     logging: *logging
     labels:
