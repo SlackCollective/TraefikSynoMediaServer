@@ -345,7 +345,7 @@ services:
 
   # Gluetun - VPN for torrents, then a healthcheck/restart container for dependencies
   gluetun:
-    image: qmcgaw/gluetun:v3.41.1
+    image: qmcgaw/gluetun:v3.41.3
     container_name: gluetun
     deploy:
       resources:
@@ -367,20 +367,14 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     volumes:
-      - $APPDIR/gluetun:/config
-      - $APPDIR/gluetun/auth/config.toml:/config/auth/config.toml
+      - $APPDIR/gluetun:/gluetun
       - /lib/modules:/lib/modules:ro
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - STORAGE_FILEPATH=/config/servers.json
       - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
-      - DNS_SERVER=off
-      # - DNS_CACHING=on
-      # - DNS_UPSTREAM_RESOLVER_TYPE=dot # dot for tls, doh for http
-      # - DNS_UPSTREAM_RESOLVERS=cloudflare
       - WIREGUARD_PRIVATE_KEY=$WIREGUARD_PRIVATE_KEY
       - WIREGUARD_PRESHARED_KEY=$WIREGUARD_PRESHARED_KEY
       - WIREGUARD_ADDRESSES=$WIREGUARD_ADDRESSES
