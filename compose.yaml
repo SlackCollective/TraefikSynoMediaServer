@@ -317,7 +317,7 @@ services:
           memory: 128M
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/traefik-forward-auth", "healthcheck"]
+      test: ["CMD", "/bin/traefik-forward-auth", "healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
