@@ -23,6 +23,15 @@ for b in node npm npx; do
 done
 rm -f /usr/local/bin/claude
 
+# wg/wg-quick from the host WireGuard package (used by login-bot's run.sh) aren't on PATH
+# by default either — same reasoning as node/npm/npx above.
+WG_DIR=/volume1/@appstore/WireGuard/wireguard
+if [ -d "$WG_DIR" ]; then
+    for b in wg wg-quick; do
+        [ -x "$WG_DIR/$b" ] && ln -sfn "$WG_DIR/$b" "/usr/local/bin/$b"
+    done
+fi
+
 # 2. Redirect ROOT's Claude data onto /volume1. root's home (/root) is on the small
 #    system partition, so the native-binary cache must not live there.
 #    IMPORTANT: accounts whose home is already on /volume1 (e.g. /var/services/homes/*)

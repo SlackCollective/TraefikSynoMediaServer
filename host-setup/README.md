@@ -115,12 +115,17 @@ the container. Any host-side script that needs to reach a published port (see
 
 ### tun-gpu.sh
 
-Two independent device fixups DSM doesn't persist across reboots:
+Three independent device fixups DSM doesn't persist across reboots:
 - **`/dev/net/tun`** — creates the device node and loads the `tun` kernel module if missing.
   Needed for WireGuard (gluetun's VPN tunnel for qBittorrent; also host WireGuard, see
   `REINSTALL.md` step 8).
 - **`/dev/dri`** — resets permissions (`755` dir, `666` on `renderD128`) so Plex's non-root
   container user can use Intel QuickSync hardware transcoding.
+- **`wireguard.ko`** — loads the host WireGuard kernel module directly. The host WireGuard
+  package (`/volume1/@appstore/WireGuard/`, see `REINSTALL.md` step 8; used by
+  `login-bot/run.sh`'s `wg1` tunnel for MyAnonamouse) shows as `non_installed` in DSM's
+  package registry — files exist on disk but DSM never auto-loads its module at boot. This
+  bypasses that broken registration rather than depending on it.
 
 Idempotent — safe to run on every boot.
 
