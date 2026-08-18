@@ -88,7 +88,12 @@ sudo chmod 0660 /run/docker.sock
 - `chmod 600` Traefik's `acme.json` (ACME cert store — Traefik refuses to start otherwise).
 - Make Organizr's `logrotate` config **not** world-readable.
 
-## 8. VPN — host WireGuard + Tailscale
+## 8. VPN — host WireGuard + Tailscale (optional)
+
+> ⚠ Optional: Tailscale (below) already provides remote access for the iPad/laptop from abroad.
+> Host WireGuard is a separate, older mechanism — skip it unless something specific still
+> depends on it. Note that gluetun's VPN tunnel (qBittorrent) does not depend on this either
+> way; it only needs `/dev/net/tun`, set up in step 9.
 
 - WireGuard SPK from blackvoid.club
   (`https://www.blackvoid.club/wireguard-spk-for-your-synology-nas/`). Follow the install
@@ -107,13 +112,22 @@ sudo chmod 0660 /run/docker.sock
 
 ## 9. TUN / GPU
 
-- Run the TUN/GPU setup (creates `/dev/net/tun` for the VPN tunnel and exposes `/dev/dri` for
-  Plex hardware transcoding) and the VPN commands.
+Deploy and run **`host-setup/tun-gpu.sh`** — creates `/dev/net/tun` (+ loads the `tun` kernel
+module) for the WireGuard tunnel, and fixes `/dev/dri` permissions for Plex hardware
+transcoding:
 
-> ⚠ "TUNGPU and VPN commands" is vague — record the exact script names / commands here on the
-> next reinstall so this step is reproducible.
+```sh
+sh /volume1/dev/tun-gpu.sh
+```
 
-## 10. Node / Claude toolchain
+(Deployed automatically by `host-setup/install.sh` — see step 10 below. Also registered as a
+Boot-up task in step 12, since DSM doesn't persist either fixup across reboots.)
+
+> ⚠ Original said "TUNGPU and VPN commands", which was vague and undocumented. Resolved: this
+> is `tun-gpu.sh`, now checked into `host-setup/`. The "VPN commands" turned out to be the same
+> `/dev/net/tun` setup, not a separate script.
+
+## 10. Node / Claude toolchain, Entware
 
 Rebuild per `host-setup/README.md` → **"Rebuilding the toolchain from scratch"** (nvm + Node on
 `/volume1/dev`, per-user **native** Claude Code), then deploy the host-setup scripts:
@@ -121,6 +135,20 @@ Rebuild per `host-setup/README.md` → **"Rebuilding the toolchain from scratch"
 ```sh
 sudo sh host-setup/install.sh
 ```
+
+Also (re)install **Entware** — DSM has no persistent `/opt` of its own, so this needs
+redoing on a fresh NAS:
+
+```sh
+sudo sh -c '
+mkdir -p /volume1/dev/entware
+ln -sfn /volume1/dev/entware /opt
+wget -O - https://bin.entware.net/x64-k3.2/installer/generic.sh | sh
+'
+sudo sh /volume1/dev/relink-tools.sh   # symlinks /opt/bin/* onto /usr/local/bin
+```
+
+Install packages as needed, e.g. `opkg install nano`. See `README.md` → Entware section.
 
 > Added step — not in the original notes, but required to restore the Node/Claude environment
 > on a fresh NAS.
@@ -134,7 +162,11 @@ sudo sh host-setup/install.sh
 
 Register as **Triggered Tasks → Boot-up**, user **root**:
 
-- `sh /volume1/dev/relink-tools.sh` — re-creates the toolchain symlinks (node/npm/npx + root's
-  Claude data) after DSM resets.
+- `sh /volume1/dev/relink-tools.sh` — re-creates the toolchain symlinks (node/npm/npx, Entware's
+  `/opt` + its `/usr/local/bin` links, root's Claude data) after DSM resets.
 - `sh /volume1/dev/iptables.sh` — host iptables NAT fixup so locally-originated connections to a
   published Docker port get hairpinned to the container (real client IP). See `README.md`.
+- `sh /volume1/dev/tun-gpu.sh` — GPU + VPN device fixup: recreates `/dev/net/tun` (+ loads the
+  `tun` kernel module, needed for gluetun's WireGuard tunnel powering qBittorrent's VPN) and
+  resets `/dev/dri` permissions (Plex hardware transcoding). Neither survives a DSM reboot on
+  its own. See `README.md`.

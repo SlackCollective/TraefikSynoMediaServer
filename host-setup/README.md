@@ -25,13 +25,23 @@ the thin links that point at it.
 ├── claude/
 │   └── root/{share,config}           # root's Claude data ONLY (root's home is on md0);
 │                                      # /volume1-home accounts are NOT redirected here
+├── entware/                  # Entware root; /opt is symlinked here (see below)
 ├── shell-aliases.sh          # this repo's copy, deployed here (chmod a+r)
 ├── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
-└── iptables.sh               # this repo's copy, deployed here (chmod +x)
+├── iptables.sh               # this repo's copy, deployed here (chmod +x)
+└── tun-gpu.sh                # this repo's copy, deployed here (chmod +x)
 ```
 
 **node/npm/npx** are exposed via `/usr/local/bin` symlinks (that dir is already on every
 shell's default PATH), so **no `.profile` / `NVM_DIR` is required** to run them.
+
+**Entware** (`opkg`, `nano`, etc.) follows the same off-`md0` pattern: its data lives at
+`/volume1/dev/entware`, with `/opt` symlinked to it (DSM's system partition has no persistent
+`/opt` of its own). `relink-tools.sh` re-creates that symlink, starts Entware's services
+(`rc.unslung`), and symlinks everything under `/opt/bin` into `/usr/local/bin` so installed
+packages resolve on PATH without touching `.profile`. To install more packages:
+`/opt/bin/opkg install <pkg>` (or just `opkg install <pkg>` once `relink-tools.sh` has run and
+linked `opkg` itself onto PATH).
 
 **claude is NOT shared this way.** Claude Code is a per-user **native** install at
 `~/.local/bin/claude` (it self-migrates from npm-global to native and self-updates). For
@@ -57,19 +67,23 @@ sudo sh install.sh
 cp shell-aliases.sh /volume1/dev/shell-aliases.sh
 cp relink-tools.sh  /volume1/dev/relink-tools.sh
 cp iptables.sh      /volume1/dev/iptables.sh
+cp tun-gpu.sh       /volume1/dev/tun-gpu.sh
 chmod a+rx /volume1/dev
 chmod a+r  /volume1/dev/shell-aliases.sh
 chmod +x   /volume1/dev/relink-tools.sh
 chmod +x   /volume1/dev/iptables.sh
+chmod +x   /volume1/dev/tun-gpu.sh
 /volume1/dev/relink-tools.sh         # run once now
+/volume1/dev/tun-gpu.sh              # run once now
 ```
 </details>
 
 Then register the boot tasks so they re-run after every reboot / reset (the installer also
-prints these steps). Both are **Control Panel → Task Scheduler → Create → Triggered Task →
+prints these steps). All three are **Control Panel → Task Scheduler → Create → Triggered Task →
 User-defined script**, Event **Boot-up**, User **root**:
 - `sh /volume1/dev/relink-tools.sh`
 - `sh /volume1/dev/iptables.sh`
+- `sh /volume1/dev/tun-gpu.sh`
 
 ### iptables.sh
 
@@ -77,6 +91,17 @@ Waits (up to 2.5 min) for Docker's `DOCKER-USER` chain to appear at boot, then e
 NAT rules exist so locally-originated connections to the NAS's own LAN IP on a published
 Docker port get hairpinned to the container. It's idempotent (checks before adding), so
 re-running it on every boot is safe.
+
+### tun-gpu.sh
+
+Two independent device fixups DSM doesn't persist across reboots:
+- **`/dev/net/tun`** — creates the device node and loads the `tun` kernel module if missing.
+  Needed for WireGuard (gluetun's VPN tunnel for qBittorrent; also host WireGuard, see
+  `REINSTALL.md` step 8).
+- **`/dev/dri`** — resets permissions (`755` dir, `666` on `renderD128`) so Plex's non-root
+  container user can use Intel QuickSync hardware transcoding.
+
+Idempotent — safe to run on every boot.
 
 **This does not make `localhost`/`127.0.0.1:<port>` work from the host** — that would also
 need `net.ipv4.conf.*.route_localnet=1`, which is `0` by default on this NAS, so loopback

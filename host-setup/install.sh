@@ -10,15 +10,18 @@ mkdir -p "$DEST"
 cp "$SRC_DIR/shell-aliases.sh" "$DEST/shell-aliases.sh"
 cp "$SRC_DIR/relink-tools.sh"  "$DEST/relink-tools.sh"
 cp "$SRC_DIR/iptables.sh"      "$DEST/iptables.sh"
+cp "$SRC_DIR/tun-gpu.sh"       "$DEST/tun-gpu.sh"
 
 chmod a+rx "$DEST"
 chmod a+r  "$DEST/shell-aliases.sh"
 chmod +x   "$DEST/relink-tools.sh"
 chmod +x   "$DEST/iptables.sh"
+chmod +x   "$DEST/tun-gpu.sh"
 
-echo "Deployed shell-aliases.sh, relink-tools.sh, and iptables.sh to $DEST."
-echo "Running relink-tools.sh once..."
+echo "Deployed shell-aliases.sh, relink-tools.sh, iptables.sh, and tun-gpu.sh to $DEST."
+echo "Running relink-tools.sh and tun-gpu.sh once..."
 "$DEST/relink-tools.sh"
+"$DEST/tun-gpu.sh"
 
 cat <<'MSG'
 
@@ -33,6 +36,11 @@ One-time: register the boot tasks so they re-run after reboots / DSM resets:
     Event:   Boot-up
     User:    root
     Command: sh /volume1/dev/iptables.sh
+
+  Control Panel -> Task Scheduler -> Create -> Triggered Task -> User-defined script
+    Event:   Boot-up
+    User:    root
+    Command: sh /volume1/dev/tun-gpu.sh
 
 To load the aliases in your current shell now:  . /volume1/dev/shell-aliases.sh
 MSG
