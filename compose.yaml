@@ -978,7 +978,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - NETWORK_SHARE_MODE=true
+      # - NETWORK_SHARE_MODE=true
       - HARDCOVER_TOKEN=$HARDCOVER_TOKEN
       - DOCKER_MODS=lscr.io/linuxserver/mods:universal-calibre-v7.16.0
     logging: *logging
