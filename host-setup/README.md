@@ -38,6 +38,10 @@ the thin links that point at it.
 
 **node/npm/npx** are exposed via `/usr/local/bin` symlinks (that dir is already on every
 shell's default PATH), so **no `.profile` / `NVM_DIR` is required** to run them.
+`relink-tools.sh` symlinks **`wg`/`wg-quick`** (from the host WireGuard package, see
+`REINSTALL.md` step 8) onto `/usr/local/bin` the same way — neither is on PATH by default,
+which is why `login-bot/run.sh` (a user script, outside this repo, at
+`/volume1/homes/JacquesRousseau/login-bot/`) couldn't find them when run from Task Scheduler.
 
 **Entware** (`opkg`, `nano`, etc.) follows the same off-`md0` pattern: its data lives at
 `/volume1/dev/entware`, with `/opt` symlinked to it (DSM's system partition has no persistent

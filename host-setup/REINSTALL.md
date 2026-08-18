@@ -104,17 +104,27 @@ sudo chmod 0660 /run/docker.sock
 /var/packages/WireGuard/scripts/start
 ```
 
+> ⚠ On the current NAS, this package shows as **`non_installed`** in DSM's package registry
+> (`synopkg status WireGuard`) even though its files are present at
+> `/volume1/@appstore/WireGuard/wireguard/` — `/var/packages/WireGuard/scripts/start` no longer
+> exists, so the package's own module-loading path is broken/orphaned. `tun-gpu.sh` (step 9)
+> now loads `wireguard.ko` directly, bypassing this package's startup mechanism entirely. If
+> reinstalling from scratch, try the SPK install as documented first — this bypass may not be
+> needed on a clean install — but if the package again ends up in this state, `tun-gpu.sh`'s
+> approach still works regardless of package registration.
+
 - Install **Tailscale** (Package Center / SynoCommunity) for remote access — this is what the
   iPad/laptop use from abroad. See `TRIP-CHECKLIST.md`.
 
 > ⚠ With Tailscale providing remote access, confirm whether the host WireGuard package is still
 > needed or is legacy.
 
-## 9. TUN / GPU
+## 9. TUN / GPU / WireGuard module
 
 Deploy and run **`host-setup/tun-gpu.sh`** — creates `/dev/net/tun` (+ loads the `tun` kernel
-module) for the WireGuard tunnel, and fixes `/dev/dri` permissions for Plex hardware
-transcoding:
+module) for gluetun's VPN tunnel, fixes `/dev/dri` permissions for Plex hardware transcoding,
+and loads `wireguard.ko` for the host WireGuard tunnel (see step 8's ⚠ note — this bypasses
+that package's own, currently-broken startup mechanism):
 
 ```sh
 sh /volume1/dev/tun-gpu.sh
@@ -162,14 +172,16 @@ Install packages as needed, e.g. `opkg install nano`. See `README.md` → Entwar
 
 Register as **Triggered Tasks → Boot-up**, user **root**:
 
-- `sh /volume1/dev/relink-tools.sh` — re-creates the toolchain symlinks (node/npm/npx, Entware's
-  `/opt` + its `/usr/local/bin` links, root's Claude data) after DSM resets.
+- `sh /volume1/dev/relink-tools.sh` — re-creates the toolchain symlinks (node/npm/npx, `wg`/
+  `wg-quick`, Entware's `/opt` + its `/usr/local/bin` links, root's Claude data) after DSM
+  resets.
 - `sh /volume1/dev/iptables.sh` — host iptables NAT fixup so locally-originated connections to a
   published Docker port get hairpinned to the container (real client IP). See `README.md`.
 - `sh /volume1/dev/tun-gpu.sh` — GPU + VPN device fixup: recreates `/dev/net/tun` (+ loads the
-  `tun` kernel module, needed for gluetun's WireGuard tunnel powering qBittorrent's VPN) and
-  resets `/dev/dri` permissions (Plex hardware transcoding). Neither survives a DSM reboot on
-  its own. See `README.md`.
+  `tun` kernel module, needed for gluetun's WireGuard tunnel powering qBittorrent's VPN),
+  resets `/dev/dri` permissions (Plex hardware transcoding), and loads `wireguard.ko` for the
+  host WireGuard tunnel (bypassing that package's broken registration, see step 8). None of
+  the three survive a DSM reboot on their own. See `README.md`.
 
 Also register (or update) one **daily** (not Boot-up) task, user **root**, named e.g.
 "Prunelogs":
