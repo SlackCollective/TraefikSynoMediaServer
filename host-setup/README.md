@@ -29,7 +29,11 @@ the thin links that point at it.
 ├── shell-aliases.sh          # this repo's copy, deployed here (chmod a+r)
 ├── relink-tools.sh           # this repo's copy, deployed here (chmod +x)
 ├── iptables.sh               # this repo's copy, deployed here (chmod +x)
-└── tun-gpu.sh                # this repo's copy, deployed here (chmod +x)
+├── tun-gpu.sh                # this repo's copy, deployed here (chmod +x)
+├── traefik-logrotate.sh      # this repo's copy, deployed here (chmod +x)
+├── traefik-logrotate.conf    # this repo's copy, deployed here (chmod a+r)
+├── traefik-logrotate.state   # created on first run by logrotate itself
+└── prunelogs.sh              # this repo's copy, deployed here (chmod +x)
 ```
 
 **node/npm/npx** are exposed via `/usr/local/bin` symlinks (that dir is already on every
@@ -64,15 +68,21 @@ sudo sh install.sh
 <summary>…or do it by hand</summary>
 
 ```sh
-cp shell-aliases.sh /volume1/dev/shell-aliases.sh
-cp relink-tools.sh  /volume1/dev/relink-tools.sh
-cp iptables.sh      /volume1/dev/iptables.sh
-cp tun-gpu.sh       /volume1/dev/tun-gpu.sh
+cp shell-aliases.sh       /volume1/dev/shell-aliases.sh
+cp relink-tools.sh        /volume1/dev/relink-tools.sh
+cp iptables.sh            /volume1/dev/iptables.sh
+cp tun-gpu.sh             /volume1/dev/tun-gpu.sh
+cp traefik-logrotate.sh   /volume1/dev/traefik-logrotate.sh
+cp traefik-logrotate.conf /volume1/dev/traefik-logrotate.conf
+cp prunelogs.sh           /volume1/dev/prunelogs.sh
 chmod a+rx /volume1/dev
 chmod a+r  /volume1/dev/shell-aliases.sh
 chmod +x   /volume1/dev/relink-tools.sh
 chmod +x   /volume1/dev/iptables.sh
 chmod +x   /volume1/dev/tun-gpu.sh
+chmod +x   /volume1/dev/traefik-logrotate.sh
+chmod a+r  /volume1/dev/traefik-logrotate.conf
+chmod +x   /volume1/dev/prunelogs.sh
 /volume1/dev/relink-tools.sh         # run once now
 /volume1/dev/tun-gpu.sh              # run once now
 ```
@@ -85,12 +95,23 @@ User-defined script**, Event **Boot-up**, User **root**:
 - `sh /volume1/dev/iptables.sh`
 - `sh /volume1/dev/tun-gpu.sh`
 
+Plus point the existing **daily** "Prunelogs" Task Scheduler task's command at:
+- `sh /volume1/dev/prunelogs.sh`
+
+(or create it fresh — Event: Daily, User: root — if it doesn't already exist)
+
 ### iptables.sh
 
 Waits (up to 2.5 min) for Docker's `DOCKER-USER` chain to appear at boot, then ensures two
 NAT rules exist so locally-originated connections to the NAS's own LAN IP on a published
 Docker port get hairpinned to the container. It's idempotent (checks before adding), so
 re-running it on every boot is safe.
+
+**This does not make `localhost`/`127.0.0.1:<port>` work from the host** — that would also
+need `net.ipv4.conf.*.route_localnet=1`, which is `0` by default on this NAS, so loopback
+traffic destined for the docker bridge gets dropped as a martian packet before it reaches
+the container. Any host-side script that needs to reach a published port (see
+`../scripts/tautulli_metadata.py`) should target the NAS's LAN IP instead of localhost.
 
 ### tun-gpu.sh
 
@@ -103,11 +124,33 @@ Two independent device fixups DSM doesn't persist across reboots:
 
 Idempotent — safe to run on every boot.
 
-**This does not make `localhost`/`127.0.0.1:<port>` work from the host** — that would also
-need `net.ipv4.conf.*.route_localnet=1`, which is `0` by default on this NAS, so loopback
-traffic destined for the docker bridge gets dropped as a martian packet before it reaches
-the container. Any host-side script that needs to reach a published port (see
-`../scripts/tautulli_metadata.py`) should target the NAS's LAN IP instead of localhost.
+### traefik-logrotate.sh / traefik-logrotate.conf
+
+Rotates `traefik/logs/access.log` and `traefik/logs/traefik.log`. Traefik has no built-in
+size-based rotation; it relies on an external tool (this) plus a **`USR1`** signal telling it
+to close and reopen the log file at the same path — not `SIGHUP`, and not `copytruncate`
+(which can drop lines written between the copy and the truncate).
+
+Invoked from `prunelogs.sh` below rather than its own Task Scheduler entry.
+
+Config and state file both live on `/volume1/dev/` rather than `/etc/logrotate.d/` —
+deliberately, since this NAS's own `/etc/logrotate.d`-driven rotation for this log silently
+stopped firing at some point (rotated files stopped mid-June while `access.log` kept growing
+past 1.6 GB), and what's actually meant to trigger DSM's system logrotate here could not be
+confirmed. Keeping this self-contained on `/volume1/dev/` — same reasoning as everything
+else in `host-setup/` — means it doesn't depend on that mechanism at all.
+
+### prunelogs.sh
+
+Daily log maintenance, two unrelated jobs sharing one Task Scheduler trigger for convenience:
+1. Prunes `/volume1/data/scripts/logs/*/`, keeping the 2 most recent files per subdirectory.
+2. Runs `traefik-logrotate.sh` (see above).
+
+Registered as the **daily** "Prunelogs" Task Scheduler task (not Boot-up):
+- `sh /volume1/dev/prunelogs.sh`
+
+The two jobs are chained with `;` / `|| true`, not `&&` — a failure in one (e.g. `docker`
+unreachable) must not block the other.
 
 ## Rebuilding the toolchain from scratch
 

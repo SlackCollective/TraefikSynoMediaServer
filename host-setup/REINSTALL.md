@@ -170,3 +170,14 @@ Register as **Triggered Tasks → Boot-up**, user **root**:
   `tun` kernel module, needed for gluetun's WireGuard tunnel powering qBittorrent's VPN) and
   resets `/dev/dri` permissions (Plex hardware transcoding). Neither survives a DSM reboot on
   its own. See `README.md`.
+
+Also register (or update) one **daily** (not Boot-up) task, user **root**, named e.g.
+"Prunelogs":
+
+- `sh /volume1/dev/prunelogs.sh` — prunes old files under `/volume1/data/scripts/logs/*/`
+  **and** rotates `traefik/logs/access.log` / `traefik.log` (compress + signal Traefik with
+  `USR1` to reopen the file — Traefik has no rotation of its own). The Traefik piece exists
+  because DSM's own `/etc/logrotate.d`-driven rotation for that log silently stopped at some
+  point (evidenced by `access.log` growing past 1.6 GB unrotated), and its trigger mechanism
+  on this DSM couldn't be confirmed — so this bypasses it entirely and lives self-contained
+  on `/volume1/dev/` like everything else here. See `README.md`.
