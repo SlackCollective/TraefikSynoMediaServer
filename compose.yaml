@@ -234,7 +234,7 @@ services:
       - EXEC=1 #optional
       - IMAGES=1 #optional
       - INFO=1 #optional
-      - LOGS=1 #optional
+      - ALLOW_LOGS=1 #optional
       - LOG_LEVEL=err #optional
       - NETWORKS=1 #optional
       - NODES=0 #optional
@@ -290,9 +290,9 @@ services:
       - ALLOW_START=0 #optional
       - ALLOW_STOP=0 #optional
       - ALLOW_RESTARTS=0 #optional
+      - ALLOW_LOGS=0 #optional
       - EXEC=0 #optional
       - IMAGES=0 #optional
-      - LOGS=0 #optional
       - VOLUMES=0 #optional
       - SYSTEM=0 #optional
       - AUTH=0 #optional
