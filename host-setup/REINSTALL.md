@@ -6,6 +6,42 @@ Steps to rebuild this NAS from a fresh DSM install. Companion to the rest of `ho
 
 > Corrections and caveats vs. the original notes are flagged inline with **⚠**.
 
+## 0. Before you start — what needs to be backed up
+
+This repo (`compose.yaml`, `traefik/rules/`, `host-setup/`, `CLAUDE.md`) is on GitHub, so it
+survives a drive failure on its own — nothing to do there. Everything below does **not** live
+in git and has no script to restore it; if it isn't captured by a working backup job, it's gone
+along with the drives. This is separate from — and just as important as — your Plex/media
+library under `$DATADIR` (`/volume1/data`):
+
+- **`.env`** (`/volume1/docker/apps/.env`) — `DOMAINNAME`, `PUID`/`PGID`, `CF_EMAIL`/
+  `CF_API_KEY`, `WIREGUARD_*` (AirVPN), `TRUSTED_IPS`, every `*_API_KEY`, Discord/Pullio webhook
+  URLs. Without it `compose.yaml` won't come up correctly even after everything else is
+  restored. It's small — a copy in a password manager or a separate encrypted note is enough.
+- **Every gitignored app config directory under `$APPDIR`** (`/volume1/docker/apps/`, listed in
+  `.gitignore`): `auth/`, `autobrr/`, `books/`, `crowdsec/`, `dockhand/`, `dotfiles/`, `gluetun/`,
+  `maintainerr/`, `notifiarr/`, `organizr/`, `plex/`, `prowlarr/`, `qbitmanage/`, `qbittorrent/`,
+  `radarr/`, `sabnzbd/`, `seerr/`, `sonarr/`, `tautulli/`, `vaultwarden/`, and `traefik/`'s
+  runtime state (**`acme.json`**, the Let's Encrypt cert store — Traefik refuses to start
+  without a valid one at the right permissions, see step 7). Two worth calling out specifically:
+  - **`vaultwarden/`** — your password manager's database. Losing this without a separate
+    backup means losing every credential stored in it.
+  - **`traefik/acme.json`** — losable without lasting harm (Traefik will re-issue certs on
+    next start), but Let's Encrypt rate-limits repeated issuance for the same domain, so
+    restoring it avoids a lockout window.
+- **Host WireGuard config** (if the optional step 8 SPK setup is in use) — the blackvoid.club
+  package's own config/keys, separate from gluetun's `WIREGUARD_*` env vars above.
+
+**⚠ `$APPDIR` (`/volume1/docker/apps`) is a different path from `$DATADIR` (`/volume1/data`) —**
+a backup job scoped to only the media/data share will silently skip all of the above. Confirm
+your Hyper Backup (or equivalent) job's source list actually includes `/volume1/docker`, not
+just `/volume1/data`, and that it runs successfully on a schedule you'd tolerate losing between
+runs.
+
+Not a backup concern, just re-done by hand on reinstall: **Tailscale** re-authenticates itself
+(see `TRIP-CHECKLIST.md`); DSM package installs and the manual steps below are one-time setup,
+not state.
+
 ## 1. DSM base
 
 1. Reinstall DSM.
