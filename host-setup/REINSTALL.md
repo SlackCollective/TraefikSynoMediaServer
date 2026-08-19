@@ -33,10 +33,11 @@ library under `$DATADIR` (`/volume1/data`):
   package's own config/keys, separate from gluetun's `WIREGUARD_*` env vars above.
 
 **⚠ `$APPDIR` (`/volume1/docker/apps`) is a different path from `$DATADIR` (`/volume1/data`) —**
-a backup job scoped to only the media/data share will silently skip all of the above. Confirm
-your Hyper Backup (or equivalent) job's source list actually includes `/volume1/docker`, not
-just `/volume1/data`, and that it runs successfully on a schedule you'd tolerate losing between
-runs.
+a backup job scoped to only the media/data share would silently skip all of the above.
+**Confirmed:** the Hyper Backup job's source list includes `/volume1/docker`, not just
+`/volume1/data`. Still worth periodically checking that it's actually running on a schedule
+you'd tolerate losing between runs, and that it isn't excluding dotfiles under fast-changing
+dirs like `vaultwarden/` or `traefik/`.
 
 Not a backup concern, just re-done by hand on reinstall: **Tailscale** re-authenticates itself
 (see `TRIP-CHECKLIST.md`); DSM package installs and the manual steps below are one-time setup,
