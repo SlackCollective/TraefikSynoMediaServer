@@ -8,6 +8,9 @@
 # without a separate profile edit (root's home is on the fragile /root partition).
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
 
+# --- PATH: Synology's Git package (git is not installed system-wide) ---
+case ":$PATH:" in *":/volume1/@appstore/Git/bin:"*) ;; *) export PATH="$PATH:/volume1/@appstore/Git/bin" ;; esac
+
 # --- files / navigation ---
 alias ll='ls -lah'
 alias la='ls -A'
